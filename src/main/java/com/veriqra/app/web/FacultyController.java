@@ -13,9 +13,7 @@ import com.veriqra.app.domain.dto.AttendanceDtos.TimetableSlotRequest;
 import com.veriqra.app.config.ParallelQueries;
 import com.veriqra.app.repository.AcademicRepository;
 import com.veriqra.app.repository.AttendanceRepository;
-import com.veriqra.app.security.ApiException;
 import com.veriqra.app.security.CurrentAccount;
-import com.veriqra.app.security.Role;
 import com.veriqra.app.service.attendance.AttendanceService;
 import com.veriqra.app.service.report.ReportService;
 import com.veriqra.app.service.timetable.TimetableService;
@@ -193,18 +191,14 @@ public class FacultyController {
     /**
      * Removes a session that was opened by mistake.
      *
-     * <p>Only an administrator may do this, and only while the session holds no
+     * <p>Only the teacher who owns the session may do this, and only while it holds no
      * attendance records. Once a student has been marked present, the session is a
      * record of what happened and it stays.
      */
     @DeleteMapping("/sessions/{sessionId}")
     public ResponseEntity<Map<String, String>> remove(@PathVariable long sessionId,
                                                      Authentication authentication) {
-        if (!currentAccount.user(authentication).role().equals(Role.ADMIN)) {
-            throw ApiException.forbidden("ADMIN_ONLY",
-                    "Only an administrator can remove a session.");
-        }
-        attendance.deleteSession(sessionId);
+        attendance.deleteSession(sessionId, currentAccount.id(authentication));
         return ResponseEntity.ok(Map.of("status", "removed"));
     }
 

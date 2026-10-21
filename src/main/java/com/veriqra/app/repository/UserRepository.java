@@ -140,6 +140,12 @@ public class UserRepository {
         db.update("update app_user set password_hash = ? where id = ?", passwordHash, userId);
     }
 
+    /** Replaces the name and the roll number of an account. */
+    public void updateProfile(long userId, String fullName, String studentNumber) {
+        db.update("update app_user set full_name = ?, student_number = ? where id = ?",
+                fullName, studentNumber, userId);
+    }
+
     public List<AppUser> listAll() {
         return db.query(BASE_SELECT + " order by role, full_name", (rs, rowNum) -> toDomain(STORED_MAPPER.mapRow(rs, rowNum)));
     }

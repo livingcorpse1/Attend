@@ -66,9 +66,9 @@ veriqra:
   qr-secret: ${QR_SIGNING_SECRET:local-development-signing-secret-change-before-deploy-64-chars}
   timezone: ${INSTITUTION_TIMEZONE:Asia/Kolkata}
   low-attendance-threshold: ${LOW_ATTENDANCE_THRESHOLD:75}
-  # The password of the first administrator account. Empty means one is generated
-  # and written to the log.
-  bootstrap-admin-password: ${BOOTSTRAP_ADMIN_PASSWORD:}
+  # The college. There is no administration, so the institution is named here.
+  institution-name: ${INSTITUTION_NAME:APSHAH College}
+  institution-location: ${INSTITUTION_LOCATION:Anandnagar, Thane}
   # The demonstration accounts. Switch them off for a real deployment.
   demo-data:
     enabled: ${DEMO_DATA_ENABLED:true}
@@ -123,3 +123,4 @@ management:
   endpoint:
     health:
       show-details: never
+

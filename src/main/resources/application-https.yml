@@ -1,0 +1,24 @@
+# The HTTPS profile.
+#
+# A browser only hands a page the camera and the service worker when the origin is
+# secure, and "localhost" is the only insecure origin it allows. Opening the
+# application on a phone over the network therefore needs HTTPS.
+#
+# The key store is generated with:
+#   scripts\make-local-certificate.ps1
+#
+# Start it with:
+#   .\mvnw.cmd spring-boot:run -Dspring-boot.run.profiles=https
+
+server:
+  port: ${HTTPS_PORT:8443}
+  ssl:
+    key-store: ${SSL_KEY_STORE:file:./config/veriqra.p12}
+    key-store-type: ${SSL_KEY_STORE_TYPE:PKCS12}
+    key-store-password: ${SSL_KEY_STORE_PASSWORD:}
+    key-alias: ${SSL_KEY_ALIAS:veriqra}
+
+logging:
+  level:
+    root: INFO
+    com.veriqra.app: INFO

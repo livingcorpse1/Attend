@@ -1,6 +1,7 @@
 package com.veriqra.app.web;
 
 import com.veriqra.app.DemoData;
+import com.veriqra.app.config.AppProperties;
 import com.veriqra.app.domain.dto.AccountDtos.AccountProfile;
 import com.veriqra.app.domain.dto.AccountDtos.LoginRequest;
 import com.veriqra.app.domain.dto.AccountDtos.RegisterRequest;
@@ -37,15 +38,18 @@ public class AuthController {
 
     private final AuthService authService;
     private final SettingsService settings;
+    private final AppProperties properties;
     private final ObjectProvider<DemoData> demoData;
     private final SecurityContextRepository securityContextRepository;
 
     public AuthController(AuthService authService,
                           SettingsService settings,
+                          AppProperties properties,
                           ObjectProvider<DemoData> demoData,
                           SecurityContextRepository securityContextRepository) {
         this.authService = authService;
         this.settings = settings;
+        this.properties = properties;
         this.demoData = demoData;
         this.securityContextRepository = securityContextRepository;
     }
@@ -128,8 +132,8 @@ public class AuthController {
 
     private Map<String, String> institution() {
         Map<String, String> values = new LinkedHashMap<>();
-        values.put("name", settings.get(SettingsService.INSTITUTION_NAME, ""));
-        values.put("location", settings.get(SettingsService.INSTITUTION_LOCATION, ""));
+        values.put("name", settings.get(SettingsService.INSTITUTION_NAME, properties.getInstitutionName()));
+        values.put("location", settings.get(SettingsService.INSTITUTION_LOCATION, properties.getInstitutionLocation()));
         return values;
     }
 

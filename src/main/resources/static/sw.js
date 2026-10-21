@@ -29,7 +29,7 @@ const SHELL_ASSETS = [
   '/js/views/verify.js',
   '/js/views/student.js',
   '/js/views/faculty.js',
-  '/js/views/admin.js',
+  '/js/views/classes.js',
   '/vendor/qrcode.min.js',
   '/vendor/jsQR.min.js',
   '/icons/icon-192.png',

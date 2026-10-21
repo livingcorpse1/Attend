@@ -39,7 +39,6 @@ class TimetableIntegrationTest {
 
     private MockHttpSession faculty;
     private MockHttpSession otherFaculty;
-    private MockHttpSession admin;
 
     /** The class the first teacher owns. */
     private long ownClass;
@@ -53,16 +52,17 @@ class TimetableIntegrationTest {
     @BeforeEach
     void setUp() throws Exception {
         faculty = login("faculty@veriqra.local", "Demo!2026");
-        otherFaculty = login("faculty2@veriqra.local", "Demo!2026");
-        admin = login("admin@veriqra.local", "AdminDemo!26");
 
-        long ownSubject = TestFixtures.createSubject(mvc, admin, "TS101", "Own Subject",
-                TestFixtures.userId(mvc, admin, "faculty@veriqra.local"));
-        long otherSubject = TestFixtures.createSubject(mvc, admin, "TS102", "Other Subject",
-                TestFixtures.userId(mvc, admin, "faculty2@veriqra.local"));
+        // There is no administrator. The first teacher adds a colleague, and that
+        // colleague becomes the owner of the lecture that must not be touched.
+        String colleaguePassword = TestFixtures.addTeacher(mvc, faculty, "faculty2@veriqra.local", "Prof. Anand Iyer");
+        otherFaculty = login("faculty2@veriqra.local", colleaguePassword);
 
-        ownClass = TestFixtures.createClass(mvc, admin, ownSubject, "A", "Room 1");
-        otherClass = TestFixtures.createClass(mvc, admin, otherSubject, "A", "Room 2");
+        long ownSubject = TestFixtures.createSubject(mvc, faculty, "TS101", "Own Subject");
+        long otherSubject = TestFixtures.createSubject(mvc, otherFaculty, "TS102", "Other Subject");
+
+        ownClass = TestFixtures.createClass(mvc, faculty, ownSubject, "A", "Room 1");
+        otherClass = TestFixtures.createClass(mvc, otherFaculty, otherSubject, "A", "Room 2");
 
         // One lecture in each diary.
         ownSlot = addLecture(faculty, ownClass, 1, "09:00", "10:00");
@@ -86,8 +86,8 @@ class TimetableIntegrationTest {
     void aTeacherSeesOnlyTheirOwnDiary() throws Exception {
         mvc.perform(get("/api/faculty/timetable").session(faculty))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$", hasSize(1)))
-                .andExpect(jsonPath("$[0].facultyName").value("Dr. Maya Rao"));
+                .andExpect(jsonPath("$", hasSize(2)))
+                .andExpect(jsonPath("$[0].facultyName").value("Prof. Anita Desai"));
 
         mvc.perform(get("/api/faculty/timetable").session(otherFaculty))
                 .andExpect(status().isOk())
@@ -112,7 +112,7 @@ class TimetableIntegrationTest {
 
         mvc.perform(get("/api/faculty/timetable").session(faculty))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$", hasSize(2)))
+                .andExpect(jsonPath("$", hasSize(3)))
                 .andExpect(jsonPath("$[?(@.id == " + id + ")]", hasSize(1)));
     }
 
@@ -129,7 +129,7 @@ class TimetableIntegrationTest {
     @Test
     void aLectureCannotOverlapAnotherOneOfTheSameTeacher() throws Exception {
         // The teacher already teaches the own class on Monday from 09:00 to 10:00.
-        long second = TestFixtures.createClass(mvc, admin, TestFixtures.subjectOf(mvc, admin, ownClass),
+        long second = TestFixtures.createClass(mvc, faculty, TestFixtures.subjectOf(mvc, faculty, ownClass),
                 "B", "Room 3");
 
         mvc.perform(post("/api/faculty/timetable").with(csrf())

@@ -1,5 +1,7 @@
 package com.veriqra.app;
 
+import com.veriqra.app.repository.AcademicRepository;
+import com.veriqra.app.repository.AttendanceRepository;
 import com.veriqra.app.repository.UserRepository;
 import com.veriqra.app.security.Role;
 import org.slf4j.Logger;
@@ -12,16 +14,17 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
+import java.time.LocalTime;
+
 /**
- * Creates the demonstration accounts.
+ * Creates the demonstration accounts and the class they teach.
  *
- * <p>Only the accounts are created. The academic structure around them, the subjects,
- * the class sections, the rooms and the weekly schedule, is not seeded: that belongs to
- * the college and is entered by an administrator.
+ * <p>There is no administrator. The demonstration is one teacher, one subject, one class
+ * section and the student who attends it, so the application can be tried out on a fresh
+ * installation. Everything can be removed or changed from the teacher's own screens.
  *
- * <p>The accounts exist so the application can be tried out on a fresh installation. They
- * can be switched off with {@code DEMO_DATA_ENABLED=false}, and they are never created
- * in the {@code prod} profile.
+ * <p>The accounts are the only seeded data and they can be switched off with
+ * {@code DEMO_DATA_ENABLED=false}. They are never created in the {@code prod} profile.
  */
 @Configuration
 @Profile("!prod")
@@ -37,48 +40,94 @@ public class DemoData {
     private static final String DEMO_PASSWORD = "Demo!2026";
 
     private static final DemoAccount[] DEMO_ACCOUNTS = {
-            new DemoAccount("faculty@veriqra.local", "Dr. Maya Rao", Role.FACULTY, null),
-            new DemoAccount("faculty2@veriqra.local", "Prof. Anand Iyer", Role.FACULTY, null),
+            new DemoAccount("faculty@veriqra.local", "Prof. Anita Desai", Role.FACULTY, null),
             new DemoAccount("student@veriqra.local", "Aarav Sharma", Role.STUDENT, "VQ24001"),
-            new DemoAccount("student2@veriqra.local", "Diya Patil", Role.STUDENT, "VQ24002"),
-            new DemoAccount("student3@veriqra.local", "Rohan Deshmukh", Role.STUDENT, "VQ24003")
+            new DemoAccount("student2@veriqra.local", "Diya Patil", Role.STUDENT, "VQ24002")
     };
 
+    /** The subject the demonstration teacher owns. */
+    private static final String DEMO_SUBJECT_CODE = "ML";
+    private static final String DEMO_SUBJECT_NAME = "Machine Learning";
+    private static final String DEMO_SECTION = "A";
+    private static final String DEMO_ROOM = "Innovation Lab 204";
+    private static final int DEMO_DAY = 1;
+    private static final String DEMO_STARTS = "10:00";
+    private static final String DEMO_ENDS = "11:00";
+
     private final UserRepository users;
+    private final AcademicRepository academic;
+    private final AttendanceRepository attendance;
     private final PasswordEncoder passwordEncoder;
 
-    public DemoData(UserRepository users, PasswordEncoder passwordEncoder) {
+    public DemoData(UserRepository users,
+                    AcademicRepository academic,
+                    AttendanceRepository attendance,
+                    PasswordEncoder passwordEncoder) {
         this.users = users;
+        this.academic = academic;
+        this.attendance = attendance;
         this.passwordEncoder = passwordEncoder;
     }
 
     @Bean
     public ApplicationRunner seedDemoAccounts() {
         return (ApplicationArguments args) -> {
-            int created = 0;
-            int reset = 0;
             for (DemoAccount account : DEMO_ACCOUNTS) {
                 var existing = users.findByEmail(account.email());
-                if (existing.isEmpty()) {
-                    users.create(account.email(), passwordEncoder.encode(DEMO_PASSWORD),
-                            account.fullName(), account.role(), account.studentNumber());
-                    created += 1;
+                if (existing.isPresent()) {
+                    // The demonstration password is published on the sign in screen, so it
+                    // is kept in step with the account.
+                    users.updatePassword(existing.get().id(), passwordEncoder.encode(DEMO_PASSWORD));
+                    users.updateProfile(existing.get().id(), account.fullName(), account.studentNumber());
                     continue;
                 }
-                // The demonstration password is published on the sign in screen, so it is
-                // kept in step with the account. A password that was changed on purpose
-                // is therefore reset on the next start.
-                users.updatePassword(existing.get().id(), passwordEncoder.encode(DEMO_PASSWORD));
-                reset += 1;
+                users.create(account.email(), passwordEncoder.encode(DEMO_PASSWORD),
+                        account.fullName(), account.role(), account.studentNumber());
             }
-            if (created > 0) {
-                log.info("Created {} demonstration account(s). They can be removed or disabled from the "
-                        + "administration screens.", created);
-            }
-            if (reset > 0) {
-                log.info("Reset the password of {} demonstration account(s).", reset);
-            }
+            seedTheClass();
         };
+    }
+
+    /**
+     * Creates the subject, the class section, the enrolments and the weekly lecture.
+     */
+    private void seedTheClass() {
+        var teacher = users.findByEmail("faculty@veriqra.local");
+        if (teacher.isEmpty()) {
+            return;
+        }
+        long facultyId = teacher.get().id();
+
+        long subjectId = academic.listSubjectsForFaculty(facultyId).stream()
+                .filter(subject -> DEMO_SUBJECT_CODE.equals(subject.code()))
+                .findFirst()
+                .map(AcademicRepository.SubjectView::id)
+                .orElseGet(() -> academic.createSubject(DEMO_SUBJECT_CODE, DEMO_SUBJECT_NAME, facultyId));
+
+        long classId = academic.listAllClasses().stream()
+                .filter(view -> view.subjectId() == subjectId && DEMO_SECTION.equals(view.section()))
+                .findFirst()
+                .map(AcademicRepository.ClassView::id)
+                .orElseGet(() -> academic.createClass(subjectId, DEMO_SECTION, DEMO_ROOM));
+
+        for (String email : new String[]{"student@veriqra.local", "student2@veriqra.local"}) {
+            users.findByEmail(email).ifPresent(student -> {
+                if (!academic.isEnrolled(student.id(), classId)) {
+                    academic.enrol(student.id(), classId);
+                }
+            });
+        }
+
+        boolean hasLecture = academic.timetableForFaculty(facultyId).stream()
+                .anyMatch(slot -> slot.classId() == classId
+                        && slot.dayOfWeek() == DEMO_DAY
+                        && slot.starts().equals(LocalTime.parse(DEMO_STARTS)));
+        if (!hasLecture) {
+            academic.createTimetableSlot(classId, facultyId, DEMO_DAY,
+                    LocalTime.parse(DEMO_STARTS), LocalTime.parse(DEMO_ENDS));
+        }
+
+        log.info("The demonstration class {} {} is ready.", DEMO_SUBJECT_CODE, DEMO_SECTION);
     }
 
     /**

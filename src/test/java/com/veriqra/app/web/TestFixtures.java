@@ -16,48 +16,48 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 /**
  * Builds the academic structure the tests need.
  *
- * <p>Nothing about the college is seeded, so every test that needs a subject, a class
- * section or an enrolment creates exactly what it uses.
+ * <p>There is no administrator. A teacher creates their own subjects, the class sections
+ * that run them and the students who attend, so the tests do the same.
  */
 final class TestFixtures {
 
     private TestFixtures() {
     }
 
-    /** The identifier of an account, by its email address. */
-    static long userId(MockMvc mvc, MockHttpSession admin, String email) throws Exception {
-        MvcResult result = mvc.perform(get("/api/admin/users").session(admin))
-                .andExpect(status().isOk())
+    /**
+     * Adds a colleague to the teaching staff.
+     *
+     * <p>There is no administrator, so a teacher provisions the other teachers.
+     *
+     * @return the password of the new account
+     */
+    static String addTeacher(MockMvc mvc, MockHttpSession teacher, String email, String fullName)
+            throws Exception {
+        MvcResult result = mvc.perform(post("/api/faculty/teachers").with(csrf())
+                        .session(teacher)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"" + email + "\",\"fullName\":\"" + fullName + "\"}"))
+                .andExpect(status().isCreated())
                 .andReturn();
-        List<Object> users = JsonPath.read(result.getResponse().getContentAsString(), "$");
-        for (Object entry : users) {
-            @SuppressWarnings("unchecked")
-            java.util.Map<String, Object> user = (java.util.Map<String, Object>) entry;
-            if (email.equals(user.get("email"))) {
-                return ((Number) user.get("id")).longValue();
-            }
-        }
-        throw new IllegalStateException("No account for " + email);
+        return (String) JsonPath.read(result.getResponse().getContentAsString(), "$.password");
     }
 
-    /** Creates a subject that belongs to a teacher. */
-    static long createSubject(MockMvc mvc, MockHttpSession admin, String code, String name, long facultyId)
-            throws Exception {
-        MvcResult result = mvc.perform(post("/api/admin/subjects").with(csrf())
-                        .session(admin)
+    /** Creates a subject that belongs to the teacher. */
+    static long createSubject(MockMvc mvc, MockHttpSession teacher, String code, String name) throws Exception {
+        MvcResult result = mvc.perform(post("/api/faculty/subjects").with(csrf())
+                        .session(teacher)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"code\":\"" + code + "\",\"name\":\"" + name
-                                + "\",\"facultyId\":" + facultyId + "}"))
+                        .content("{\"code\":\"" + code + "\",\"name\":\"" + name + "\"}"))
                 .andExpect(status().isCreated())
                 .andReturn();
         return ((Number) JsonPath.read(result.getResponse().getContentAsString(), "$.id")).longValue();
     }
 
-    /** Creates a class section for a subject. */
-    static long createClass(MockMvc mvc, MockHttpSession admin, long subjectId, String section, String room)
+    /** Creates a class section for a subject of the teacher. */
+    static long createClass(MockMvc mvc, MockHttpSession teacher, long subjectId, String section, String room)
             throws Exception {
-        MvcResult result = mvc.perform(post("/api/admin/classes").with(csrf())
-                        .session(admin)
+        MvcResult result = mvc.perform(post("/api/faculty/classes").with(csrf())
+                        .session(teacher)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"subjectId\":" + subjectId + ",\"section\":\"" + section
                                 + "\",\"room\":\"" + room + "\"}"))
@@ -67,25 +67,28 @@ final class TestFixtures {
     }
 
     /** Enrols a student in a class section. */
-    static void enrol(MockMvc mvc, MockHttpSession admin, long studentId, long classId) throws Exception {
-        mvc.perform(post("/api/admin/enrollments").with(csrf())
-                        .session(admin)
-                        .param("studentId", Long.toString(studentId))
+    static void enrol(MockMvc mvc, MockHttpSession teacher, String studentEmail, long classId) throws Exception {
+        mvc.perform(post("/api/faculty/enrollments").with(csrf())
+                        .session(teacher)
+                        .param("email", studentEmail)
                         .param("classId", Long.toString(classId)))
                 .andExpect(status().isOk());
     }
 
     /** The subject a class section belongs to. */
-    static long subjectOf(MockMvc mvc, MockHttpSession admin, long classId) throws Exception {
-        MvcResult result = mvc.perform(get("/api/admin/classes").session(admin))
+    static long subjectOf(MockMvc mvc, MockHttpSession teacher, long classId) throws Exception {
+        MvcResult result = mvc.perform(get("/api/faculty/structure").session(teacher))
                 .andExpect(status().isOk())
                 .andReturn();
-        List<Object> classes = JsonPath.read(result.getResponse().getContentAsString(), "$");
+        List<Object> classes = JsonPath.read(result.getResponse().getContentAsString(), "$.classes");
         for (Object entry : classes) {
             @SuppressWarnings("unchecked")
             java.util.Map<String, Object> row = (java.util.Map<String, Object>) entry;
             if (((Number) row.get("id")).longValue() == classId) {
-                return ((Number) row.get("subjectId")).longValue();
+                Object subjectId = row.get("subjectId");
+                if (subjectId instanceof Number number) {
+                    return number.longValue();
+                }
             }
         }
         throw new IllegalStateException("No class section with the identifier " + classId);

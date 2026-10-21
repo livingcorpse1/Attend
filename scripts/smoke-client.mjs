@@ -6,7 +6,7 @@
  * and fails on the first console error or on the first missing element.
  *
  * <p>Nothing about the college is seeded, so the script builds the subject, the class
- * section and the enrolment it needs through the administration API, and removes them
+ * section and the enrolment it needs through the teacher's own API, and removes them
  * again when it is done.
  *
  * Usage:
@@ -47,8 +47,6 @@ function settingFromEnvironmentFile(name, fallback) {
   return fallback;
 }
 
-const ADMIN_EMAIL = settingFromEnvironmentFile('BOOTSTRAP_ADMIN_EMAIL', 'admin@veriqra.local');
-const ADMIN_PASSWORD = settingFromEnvironmentFile('BOOTSTRAP_ADMIN_PASSWORD', 'AdminDemo!26');
 const DEMO_PASSWORD = settingFromEnvironmentFile('DEMO_PASSWORD', 'Demo!2026');
 
 const browserPath = [
@@ -192,36 +190,32 @@ async function signIn(email, password) {
  * Builds the academic structure the screens need.
  */
 async function buildAcademicStructure() {
-  await signIn(ADMIN_EMAIL, ADMIN_PASSWORD);
+  await signIn('faculty@veriqra.local', DEMO_PASSWORD);
 
   const ids = await evaluate(`(async () => {
     const bootstrap = await (await fetch('/api/auth/session')).json();
     const headers = { 'Content-Type': 'application/json', 'X-XSRF-TOKEN': bootstrap.csrfToken };
 
-    const users = await (await fetch('/api/admin/users', { headers })).json();
-    const teacher = users.find((user) => user.email === 'faculty@veriqra.local');
-    const student = users.find((user) => user.email === 'student@veriqra.local');
-
     // Reuse what a previous run created, so the script can be run again.
-    const subjects = await (await fetch('/api/admin/subjects', { headers })).json();
+    const subjects = await (await fetch('/api/faculty/subjects', { headers })).json();
     let subject = subjects.find((entry) => entry.code === 'SMOKE1');
     if (!subject) {
-      subject = await (await fetch('/api/admin/subjects', {
+      subject = await (await fetch('/api/faculty/subjects', {
         method: 'POST', headers,
-        body: JSON.stringify({ code: 'SMOKE1', name: 'Smoke Test Subject', facultyId: teacher.id })
+        body: JSON.stringify({ code: 'SMOKE1', name: 'Smoke Test Subject' })
       })).json();
     }
 
-    const classes = await (await fetch('/api/admin/classes', { headers })).json();
+    const classes = await (await fetch('/api/faculty/classes', { headers })).json();
     let classSection = classes.find((entry) => entry.subjectId === subject.id);
     if (!classSection) {
-      classSection = await (await fetch('/api/admin/classes', {
+      classSection = await (await fetch('/api/faculty/classes', {
         method: 'POST', headers,
         body: JSON.stringify({ subjectId: subject.id, section: 'A', room: 'Smoke Lab' })
       })).json();
     }
 
-    await fetch('/api/admin/enrollments?studentId=' + student.id + '&classId=' + classSection.id,
+    await fetch('/api/faculty/enrollments?email=student@veriqra.local&classId=' + classSection.id,
       { method: 'POST', headers });
 
     return { classId: classSection.id, subjectId: subject.id };
@@ -240,12 +234,12 @@ async function removeAcademicStructure(ids) {
   if (!ids || !ids.classId) {
     return;
   }
-  await signIn(ADMIN_EMAIL, ADMIN_PASSWORD);
+  await signIn('faculty@veriqra.local', DEMO_PASSWORD);
   await evaluate(`(async () => {
     const bootstrap = await (await fetch('/api/auth/session')).json();
     const headers = { 'Content-Type': 'application/json', 'X-XSRF-TOKEN': bootstrap.csrfToken };
-    await fetch('/api/admin/classes/' + ${ids.classId}, { method: 'DELETE', headers });
-    await fetch('/api/admin/subjects/' + ${ids.subjectId}, { method: 'DELETE', headers });
+    await fetch('/api/faculty/classes/' + ${ids.classId}, { method: 'DELETE', headers });
+    await fetch('/api/faculty/subjects/' + ${ids.subjectId}, { method: 'DELETE', headers });
   })()`);
 }
 

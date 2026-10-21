@@ -9,8 +9,8 @@ spring:
     locations: classpath:db/migration
 
 veriqra:
-  # A fixed password, so the tests can sign in as the administrator.
-  bootstrap-admin-password: AdminDemo!26
+  institution-name: Test College
+  institution-location: Test City
 
 logging:
   level:

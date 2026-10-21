@@ -23,33 +23,42 @@ Last reviewed: 2026-10-21, against version 2.0.0.
   a submission interval.
 * A teaching diary a teacher owns: lectures can be added, moved and removed, and the
   server refuses a slot that would double book the teacher or the class.
+* The teacher owns the academic structure: subjects, class sections and enrolments, all
+  scoped to the teacher, all written to the audit trail.
 * CSV and PDF exports for the student and for the teacher.
 * Scheduled housekeeping that closes expired sessions and prunes the temporary tables.
 
+### Roles
+
+There are only two. The college is run by the people who use it, so there is no
+administrator, no administration console and no administrator account.
+
+* A teacher owns their own academic structure: the subjects they teach, the class
+  sections that run them, the students who attend and the lectures they schedule.
+  Nobody can touch anybody else's, and every change is written to the audit trail.
+* A teacher adds the other teachers, because there is nobody else who could. The
+  generated password is returned once.
+* A student registers themselves and is then held at the identity check until the face
+  template is enrolled.
+* The institution details are configuration, read from the environment, and the
+  attendance threshold and the version of the biometric notice are settings in the
+  database.
+
 ### Nothing about the college is compiled in
 
-The only seeded data is the demonstration accounts. Everything that describes the
-institution, the name and the location of the college, the attendance threshold, the
-version of the biometric notice, the subjects, the class sections, the rooms and the
-weekly schedule, is data, held in the database and entered by an administrator.
+The only seeded data is the demonstration: one teacher, the subject **ML** with a class
+section, two students and one weekly lecture.
 
-* The institution settings live in `app_setting` and are read through
-  `SettingsService`. There is no copy of them in the source, in the configuration or in
-  the environment.
-* A migration removes the values that used to be compiled in, so a database that was
-  created earlier does not keep them either.
+* The name and the location of the college come from the environment, so the same build
+  can be pointed at any college.
+* The subjects, the class sections, the rooms and the schedule are created by the
+  teacher who owns them, and can be changed or removed at any time.
 * The version of the biometric notice is read from the database, so the client is told
   which version to send and the server decides whether it is current.
 * The hours of the teaching day are configuration, not a constant in the service.
-* The subjects, the class sections, the enrolments and the schedule are created through
-  the administration screens, which is why the administration screens can create them.
 * The tests build the structure they need instead of relying on seeded rows.
-* The administration screens can create and remove the subjects, the class sections, the
-  enrolments and a session that was opened by mistake. A subject with class sections, a
-  class with attendance sessions and a session with attendance records are refused with a
-  clear message rather than a broken constraint.
 * The browser smoke test and the screenshot script build the structure they need through
-  the administration API and remove it again, so a run leaves no trace.
+  the teacher's own API and remove it again, so a run leaves no trace.
 
 ### Speed
 

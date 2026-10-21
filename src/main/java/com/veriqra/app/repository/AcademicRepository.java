@@ -64,6 +64,18 @@ public class AcademicRepository {
             rs.getObject("faculty_id", Long.class),
             rs.getString("faculty_name"));
 
+    /** The subjects a teacher owns. */
+    public List<SubjectView> listSubjectsForFaculty(long facultyId) {
+        return db.query("""
+                select s.id, s.code, s.name, s.faculty_id, u.full_name as faculty_name
+                  from subject s
+                  left join app_user u on u.id = s.faculty_id
+                 where s.faculty_id = ?
+                 order by s.code
+                """, (rs, rowNum) -> new SubjectView(rs.getLong("id"), rs.getString("code"), rs.getString("name"),
+                rs.getObject("faculty_id", Long.class), rs.getString("faculty_name")), facultyId);
+    }
+
     public List<SubjectView> listAllSubjects() {
         return db.query("""
                 select s.id, s.code, s.name, s.faculty_id, u.full_name as faculty_name
@@ -107,6 +119,14 @@ public class AcademicRepository {
                   join subject s on s.id = c.subject_id
                  where c.id = ? and s.faculty_id = ?
                 """, Integer.class, classId, facultyId);
+        return count != null && count > 0;
+    }
+
+    /** True when the subject itself belongs to the teacher. */
+    public boolean ownsSubject(long facultyId, long subjectId) {
+        Integer count = db.queryForObject(
+                "select count(*) from subject where id = ? and faculty_id = ?",
+                Integer.class, subjectId, facultyId);
         return count != null && count > 0;
     }
 

@@ -3,15 +3,13 @@ package com.veriqra.app.security;
 /**
  * Authorisation roles recognised by the platform.
  *
- * <p>The value stored in {@code app_user.role} is exactly the enum name, so the
- * database and the Java code stay in sync without a translation table.
+ * <p>There are only two. A teacher teaches and takes attendance, a student is marked
+ * present. There is no administrator role: the college is run by the people who use it.
  */
 public enum Role {
-    /** Institution administrator: manages users, classes and reads audit trails. */
-    ADMIN,
-    /** Teaching staff: runs attendance sessions and corrects records with an audit trail. */
+    /** Teaching staff: runs attendance sessions, schedules their own lectures, corrects records. */
     FACULTY,
-    /** Student: scans rotating QR codes and verifies presence with a face check. */
+    /** Student: marks their own presence and sees their own attendance. */
     STUDENT;
 
     public static Role fromDatabase(String value) {

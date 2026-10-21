@@ -22,11 +22,17 @@ public class AppProperties {
     private int lowAttendanceThreshold = 75;
 
     /**
-     * The password of the first administrator account.
+     * The name of the institution, shown in the shell.
      *
-     * <p>Empty means one is generated and written to the log.
+     * <p>There is no administration, so the college is named here. It is configuration,
+     * not a constant in the code, so the same build can be pointed at any college.
      */
-    private String bootstrapAdminPassword = "";
+    private String institutionName = "";
+
+    /** Where the institution is, shown under its name. */
+    private String institutionLocation = "";
+
+
 
     private final Qr qr = new Qr();
     private final Biometric biometric = new Biometric();
@@ -60,13 +66,23 @@ public class AppProperties {
         this.lowAttendanceThreshold = lowAttendanceThreshold;
     }
 
-    public String getBootstrapAdminPassword() {
-        return bootstrapAdminPassword;
+    public String getInstitutionName() {
+        return institutionName;
     }
 
-    public void setBootstrapAdminPassword(String bootstrapAdminPassword) {
-        this.bootstrapAdminPassword = bootstrapAdminPassword;
+    public void setInstitutionName(String institutionName) {
+        this.institutionName = institutionName;
     }
+
+    public String getInstitutionLocation() {
+        return institutionLocation;
+    }
+
+    public void setInstitutionLocation(String institutionLocation) {
+        this.institutionLocation = institutionLocation;
+    }
+
+
 
     public Qr getQr() {
         return qr;

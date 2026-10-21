@@ -5,7 +5,8 @@
 # The ONNX models are downloaded with scripts/fetch-models.ps1, they are not in source control.
 /models/*.onnx
 
-# Local configuration and secrets.
+# The local key store and its password.
+/config/
 # .env holds the database password, the service role key and the signing secret.
 .env
 .env.local

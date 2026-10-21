@@ -73,7 +73,7 @@ institution details. Always callable without a session.
 ```
 
 The name and the location of the institution come from the institution settings, which
-are empty until an administrator fills them in. The consent version tells the client
+are read from the environment. The consent version tells the client
 which version of the biometric notice to send. The demonstration accounts are only
 listed when they exist.
 
@@ -228,10 +228,10 @@ The session is derived from the signed payload, so the student only has to scan.
 
 ---
 
-## Faculty routes
+## Teacher routes
 
-All routes below require the `FACULTY` or `ADMIN` role. A teacher can only reach their
-own sessions.
+All routes below require the `FACULTY` role. A teacher owns their own academic
+structure, and nobody can touch anybody else's.
 
 ### `GET /api/faculty/dashboard`
 
@@ -241,6 +241,54 @@ which the client turns into the fortnight calendar.
 ### `GET /api/faculty/classes`
 
 The class sections the teacher is assigned to.
+
+### `GET /api/faculty/structure`
+
+The subjects and the class sections of the teacher, in one read.
+
+```json
+{
+  "subjects": [{ "id": 10, "code": "ML", "name": "Machine Learning" }],
+  "classes": [{ "id": 11, "subjectId": 10, "subjectCode": "ML", "subjectName": "Machine Learning", "section": "A", "room": "Innovation Lab 204", "enrolled": 2 }]
+}
+```
+
+### `POST /api/faculty/subjects` · `DELETE /api/faculty/subjects/{id}`
+
+Creates a subject that belongs to the teacher, and removes one that has no class
+sections.
+
+```json
+{ "code": "ML", "name": "Machine Learning" }
+```
+
+### `POST /api/faculty/classes` · `DELETE /api/faculty/classes/{id}`
+
+Creates a class section for one of the teacher's own subjects, and removes it. A class
+section that has attendance sessions is refused with `CLASS_HAS_SESSIONS`, because a
+session is a record of what happened.
+
+```json
+{ "subjectId": 10, "section": "A", "room": "Innovation Lab 204" }
+```
+
+### `POST /api/faculty/enrollments` · `DELETE /api/faculty/enrollments`
+
+Enrols a student into one of the teacher's own class sections, and removes them. The
+student has to register first, so the enrolment is by email address.
+
+```
+POST /api/faculty/enrollments?email=student@college.edu&classId=11
+```
+
+### `POST /api/faculty/teachers`
+
+Adds a colleague to the teaching staff. There is no administrator, so a teacher
+provisions the other teachers. The generated password is returned once.
+
+```json
+{ "email": "colleague@college.edu", "fullName": "Prof. A. Iyer" }
+```
 
 ### `GET /api/faculty/timetable`
 
@@ -354,73 +402,9 @@ The same list as a download.
 
 ---
 
-## Administrator routes
-
-All routes below require the `ADMIN` role.
-
-### `GET /api/admin/users` · `POST /api/admin/users` · `PUT /api/admin/users/{id}/active`
-
-The accounts. `POST` creates a faculty or administrator account:
-
-```json
-{ "fullName": "Dr. Maya Rao", "email": "maya@college.edu", "password": "…", "role": "FACULTY" }
-```
-
-### `GET /api/admin/subjects` · `GET /api/admin/classes` · `POST /api/admin/classes`
-
-The academic structure.
-
-### `GET /api/admin/subjects` · `POST /api/admin/subjects`
-
-The subjects. `POST` creates one and assigns it to a teacher.
-
-```json
-{ "code": "CS301", "name": "Distributed Systems", "facultyId": 2 }
-```
-
-### `GET /api/admin/classes` · `POST /api/admin/classes`
-
-The class sections. `POST` creates one for a subject.
-
-```json
-{ "subjectId": 1, "section": "A", "room": "Innovation Lab 204" }
-```
-
-### `DELETE /api/admin/subjects/{id}` · `DELETE /api/admin/classes/{id}`
-
-Removes a subject or a class section. A subject that still has class sections is
-refused with `SUBJECT_IN_USE`, and a class section that has attendance sessions is
-refused with `CLASS_HAS_SESSIONS`, because a session is a record of what happened.
-
-### `DELETE /api/faculty/sessions/{sessionId}`
-
-Removes a session that was opened by mistake. Only an administrator may do this, and
-only while the session holds no attendance records. The removal is written to the audit
-trail.
-
-### `GET /api/admin/enrollments?classId=1` · `POST` · `DELETE`
-
-The enrolments. `POST` takes `studentId` and `classId` as query parameters.
-
-### `GET /api/admin/settings` · `PUT /api/admin/settings?key=…&value=…`
-
-The institution settings: the name and the location of the college, the attendance
-threshold and the version of the biometric notice. These describe the college, not the
-software, so they are stored in the database and changed here.
-
-### `GET /api/admin/audit-logs?limit=100`
-
-The whole audit trail.
-
-### `GET /api/admin/verification-attempts?limit=50`
-
-The recent rejected verification attempts.
-
----
-
 ## Shared routes
 
 ### `GET /api/audit-logs?limit=100`
 
-The audit trail. A faculty member sees the entries they wrote, an administrator sees all
-of them.
+The audit trail. A teacher sees the entries they wrote themselves. The trail is
+append only.

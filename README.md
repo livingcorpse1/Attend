@@ -26,11 +26,18 @@ never trusted: it sends pixels and nothing else.
 
 ### Roles
 
+There are only two. The college is run by the people who use it, so there is no
+administrator and no administration console.
+
 | Role | What they get |
 | --- | --- |
-| **Student** | Sign up, complete the identity check, mark presence, see their attendance, their timetable and their biometric data. |
-| **Faculty** | Dashboard with a fortnight calendar, live attendance with the rotating code and the live roster, a weekly scheduler for their own lectures, timetable and reports. |
-| **Administrator** | Accounts, class sections, enrolments, institution settings and the audit trail. |
+| **Teacher** | Dashboard with a fortnight calendar, live attendance with the rotating code and the live roster, their own subjects and class sections, a weekly scheduler for their lectures, and reports. |
+| **Student** | Sign up, complete the identity check, mark presence, see their own attendance, their timetable and their biometric data. |
+
+A teacher owns their own academic structure: they create the subjects they teach, the
+class sections that run them and the students who attend, and they can add a colleague to
+the teaching staff. Nobody can touch anybody else's subjects, classes or lectures, and
+every change is written to the audit trail.
 
 ### The teaching diary
 
@@ -49,19 +56,20 @@ can be read, changed or removed.
 
 ### Nothing about the college is compiled in
 
-There is no seed data beyond the demonstration accounts. The name of the college, its
-location, the attendance threshold, the version of the biometric notice, the subjects,
-the class sections, the rooms and the weekly schedule are all **data**, and they are
-entered by an administrator from the **Administration** screens:
+The name and the location of the college are configuration, read from the environment, so
+the same build can be pointed at any college. Everything else is data:
 
-1. **Settings** — the name and the location of the institution, the threshold, the
-   version of the biometric notice.
-2. **Subjects** — a subject and the teacher who owns it.
-3. **Class sections** — a section and a room for a subject, and the students in it.
-4. **Timetable** — the teacher schedules their own lectures.
+- The **subjects**, the **class sections**, the **rooms** and the **weekly schedule** are
+  created by the teacher who owns them, from the **My classes** screen. They live in the
+  database and can be changed or removed at any time.
+- The **version of the biometric notice** and the **attendance threshold** are institution
+  settings in the database.
+- The **accounts** are created by the students themselves. A teacher adds the other
+  teachers, and the password is shown once.
 
-A fresh installation therefore starts with accounts and nothing else, and the same
-build can be pointed at any college without a code change.
+The only seeded data is the demonstration: one teacher, the subject **ML** with a class
+section, two students and one weekly lecture. It exists so the application can be tried
+out, and it can be switched off with `DEMO_DATA_ENABLED=false`.
 
 ---
 
@@ -179,16 +187,12 @@ The default profile also creates a small demonstration dataset:
 
 | Account | Password |
 | --- | --- |
-| Admin | `admin@veriqra.local` / the value of `BOOTSTRAP_ADMIN_PASSWORD` |
 | Teacher | `faculty@veriqra.local` / `Demo!2026` |
 | Student | `student@veriqra.local` / `Demo!2026` |
 
-The demonstration accounts are the only seeded data. They exist so the application can be
-tried out, and they can be switched off with `DEMO_DATA_ENABLED=false`. Their password is
-reset on every start, so the sign in screen and the accounts never disagree.
-
-The subject, the class section, the room and the weekly schedule are **not** seeded.
-They belong to the college and are entered from the administration screens.
+The demonstration accounts are the only seeded data. The teacher teaches **ML** to two
+students, so the dashboard, the calendar and the live attendance screen all have
+something in them. They can be switched off with `DEMO_DATA_ENABLED=false`.
 
 Run with the `prod` profile to switch the demonstration accounts off as well.
 
@@ -271,18 +275,15 @@ that matter most:
 | `DATABASE_POOL_SIZE` | How many connections the pool keeps. |
 | `DATABASE_KEEPALIVE_MS` | How often idle connections are pinged. Must be 30000 or more. |
 | `DATABASE_MAX_LIFETIME_MS` | How long a connection may live. |
-| `BOOTSTRAP_ADMIN_PASSWORD` | The password of the first administrator account. |
-| `DEMO_DATA_ENABLED` | Whether the demonstration accounts are created. |
+| `INSTITUTION_NAME` | The name of the college. |
+| `INSTITUTION_LOCATION` | Where the college is. |
+| `DEMO_DATA_ENABLED` | Whether the demonstration accounts and class are created. |
 | `TEACHING_DAY_START` / `TEACHING_DAY_END` | The hours in which lectures may be scheduled. |
 | `SUPABASE_SERVICE_ROLE_KEY` | Used by the server for Storage. Never reaches the browser. |
 | `VERIQRA_MODELS_DIR` | Where the ONNX models live. |
 | `BIOMETRIC_MATCH_THRESHOLD` | The cosine similarity a live face must reach. |
 | `BIOMETRIC_LIVENESS_YAW_DELTA` | How far the head must turn to prove liveness. |
 | `INSTITUTION_TIMEZONE` | The timezone the times are shown in. |
-
-The name of the college and its location are **not** environment variables. They are
-institution settings, stored in the database and changed from the administration
-screens, so the same build can be pointed at any college.
 
 ---
 

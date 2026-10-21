@@ -49,23 +49,18 @@ class AttendanceFlowIntegrationTest {
 
     private MockHttpSession facultySession;
     private MockHttpSession studentSession;
-    private MockHttpSession adminSession;
     private long classId;
 
     @BeforeEach
     void setUp() throws Exception {
         facultySession = login("faculty@veriqra.local", "Demo!2026");
         studentSession = login("student@veriqra.local", "Demo!2026");
-        adminSession = login("admin@veriqra.local", "AdminDemo!26");
 
-        // Nothing about the college is seeded, so the test builds the class it needs.
-        long subject = TestFixtures.createSubject(mvc, adminSession, "AT101", "Attendance Subject",
-                TestFixtures.userId(mvc, adminSession, "faculty@veriqra.local"));
-        classId = TestFixtures.createClass(mvc, adminSession, subject, "A", "Room 1");
-        TestFixtures.enrol(mvc, adminSession,
-                TestFixtures.userId(mvc, adminSession, "student@veriqra.local"), classId);
-        TestFixtures.enrol(mvc, adminSession,
-                TestFixtures.userId(mvc, adminSession, "student2@veriqra.local"), classId);
+        // There is no administrator. The teacher builds the class they teach.
+        long subject = TestFixtures.createSubject(mvc, facultySession, "AT101", "Attendance Subject");
+        classId = TestFixtures.createClass(mvc, facultySession, subject, "A", "Room 1");
+        TestFixtures.enrol(mvc, facultySession, "student@veriqra.local", classId);
+        TestFixtures.enrol(mvc, facultySession, "student2@veriqra.local", classId);
     }
 
     @Test
@@ -191,7 +186,8 @@ class AttendanceFlowIntegrationTest {
 
     @Test
     void aTeacherCannotOpenTheSessionOfAnotherTeacher() throws Exception {
-        MockHttpSession other = login("faculty2@veriqra.local", "Demo!2026");
+        String colleaguePassword = TestFixtures.addTeacher(mvc, facultySession, "faculty2@veriqra.local", "Prof. Anand Iyer");
+        MockHttpSession other = login("faculty2@veriqra.local", colleaguePassword);
         long session = startSession();
 
         mvc.perform(get("/api/faculty/sessions/" + session + "/roster").session(other))
@@ -267,8 +263,8 @@ class AttendanceFlowIntegrationTest {
     }
 
     @Test
-    void aStudentCannotOpenTheAdministration() throws Exception {
-        mvc.perform(get("/api/admin/users").session(studentSession))
+    void aStudentCannotReachTheTeachingWorkspace() throws Exception {
+        mvc.perform(get("/api/faculty/structure").session(studentSession))
                 .andExpect(status().isForbidden());
     }
 

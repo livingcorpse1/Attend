@@ -33,7 +33,7 @@ import {
   renderFacultyReports,
   renderFacultyTimetable
 } from './views/faculty.js';
-import { renderAdminAudit, renderAdminClasses, renderAdminSettings, renderAdminUsers } from './views/admin.js';
+import { renderMyClasses } from './views/classes.js';
 
 const root = document.getElementById('app');
 
@@ -49,15 +49,9 @@ const NAVIGATION = {
   FACULTY: [
     { path: '/dashboard', label: 'Dashboard', glyph: '⌂' },
     { path: '/attendance', label: 'Take attendance', glyph: '◎' },
-    { path: '/timetable', label: 'Timetable', glyph: '▤' },
+    { path: '/classes', label: 'My classes', glyph: '▤' },
+    { path: '/timetable', label: 'Timetable', glyph: '▥' },
     { path: '/reports', label: 'Reports', glyph: '▥' }
-  ],
-  ADMIN: [
-    { path: '/dashboard', label: 'Dashboard', glyph: '⌂' },
-    { path: '/users', label: 'Accounts', glyph: '♙' },
-    { path: '/classes', label: 'Subjects', glyph: '▤' },
-    { path: '/settings', label: 'Settings', glyph: '⚙' },
-    { path: '/audit', label: 'Audit trail', glyph: '◷' }
   ]
 };
 
@@ -81,20 +75,16 @@ const PREFETCH_BY_ROLE = {
   FACULTY: {
     '/dashboard': '/faculty/dashboard',
     '/attendance': '/faculty/classes',
+    '/classes': '/faculty/structure',
     '/timetable': '/faculty/timetable',
     '/reports': '/faculty/reports/subjects'
-  },  STUDENT: {
+  },
+  STUDENT: {
     '/dashboard': '/student/dashboard',
     '/attendance': '/student/attendance',
     '/timetable': '/student/timetable',
     '/verify-presence': '/student/sessions/active',
     '/biometric': '/student/biometric/status'
-  },
-  ADMIN: {
-    '/dashboard': '/admin/users',
-    '/users': '/admin/users',
-    '/classes': '/admin/classes',
-    '/audit': '/admin/audit-logs'
   }
 };
 
@@ -140,10 +130,8 @@ function registerRoutes() {
     const account = currentAccount();
     if (account.role === 'STUDENT') {
       await renderStudentDashboard(container, route);
-    } else if (account.role === 'FACULTY') {
-      await renderFacultyDashboard(container, route);
     } else {
-      renderAdminDashboard(container, route);
+      await renderFacultyDashboard(container, route);
     }
   });
 
@@ -181,20 +169,8 @@ function registerRoutes() {
     await renderFacultyReports(container, route);
   });
 
-  route('/users', async ({ container, route }) => {
-    await renderAdminUsers(container, route);
-  });
-
   route('/classes', async ({ container, route }) => {
-    await renderAdminClasses(container, route);
-  });
-
-  route('/settings', async ({ container, route }) => {
-    await renderAdminSettings(container, route);
-  });
-
-  route('/audit', async ({ container, route }) => {
-    await renderAdminAudit(container, route);
+    await renderMyClasses(container, route);
   });
 
   setContainerProvider(({ path }) => {
@@ -352,36 +328,6 @@ function currentPathSafe() {
 }
 
 /**
- * Renders the administrator landing page.
- */
-function renderAdminDashboard(container) {
-  const [users, classes] = [api.get('/admin/users'), api.get('/admin/classes')];
-  Promise.all([users, classes]).then(([accounts, classList]) => {
-    const students = accounts.filter((user) => user.role === 'STUDENT');
-    const verified = students.filter((user) => user.faceState === 'VERIFIED');
-
-    container.replaceChildren(h('div.stack.stack-6', [
-      h('div.page-head', [
-        h('div', {
-          h1: 'Institution overview',
-          lead: 'Accounts, classes and the state of the biometric enrolment.'
-        })
-      ]),
-      h('div.stat-grid', [
-        statTile('Accounts', String(accounts.length), `${students.length} students`),
-        statTile('Verified students', String(verified.length), 'face template enrolled'),
-        statTile('Pending verification', String(students.length - verified.length), 'still to do the check'),
-        statTile('Class sections', String(classList.length), 'across all subjects')
-      ]),
-      h('div.card', [
-        h('div.card-header', [h('h3', 'Class sections')]),
-        h('div.card-body.card-body-flush', tableOfClasses(classList))
-      ])
-    ]));
-  }).catch((failure) => {
-    container.replaceChildren(h('div.alert.alert-error', failure.message));
-  });
-}
 
 function statTile(label, value, foot) {
   return h('div.stat', [

@@ -169,21 +169,25 @@ public class AttendanceService {
         }
         return closed;
     }
-
     /**
      * Removes a session that holds no attendance records.
      *
-     * <p>Used when a session was opened for the wrong class by mistake.
+     * <p>Used when a session was opened for the wrong class by mistake. Only the teacher
+     * who owns the session may remove it.
      */
     @Transactional
-    public void deleteSession(long sessionId) {
+    public void deleteSession(long sessionId, long facultyId) {
         AttendanceRepository.SessionRow session = attendance.findSession(sessionId)
                 .orElseThrow(() -> ApiException.notFound("SESSION_NOT_FOUND", "That session does not exist."));
+        if (session.facultyId() != facultyId) {
+            throw ApiException.forbidden("NOT_OWNER", "That session belongs to another teacher.");
+        }
         if (attendance.presentCount(sessionId) > 0) {
             throw ApiException.conflict("SESSION_HAS_RECORDS",
                     "The session already holds attendance records and is not removed.");
         }
-        attendance.deleteSession(sessionId);        audit.record(session.facultyId(), "SESSION_REMOVED", "session=" + sessionId, "ADMIN_ACTION",
+        attendance.deleteSession(sessionId);
+        audit.record(facultyId, "SESSION_REMOVED", "session=" + sessionId, "TEACHER_ACTION",
                 "Session removed because it was opened by mistake", null, null);
         log.info("Removed the empty attendance session {}", sessionId);
     }

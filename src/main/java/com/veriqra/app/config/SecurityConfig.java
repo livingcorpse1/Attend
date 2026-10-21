@@ -48,9 +48,6 @@ import java.util.Locale;
 @Configuration
 public class SecurityConfig {
 
-    /** Roles allowed to read the institution wide audit trail. */
-    private static final String[] AUDIT_READERS = {"ADMIN", "FACULTY"};
-
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder(12);
@@ -122,10 +119,9 @@ public class SecurityConfig {
                                 "/api/auth/session",
                                 "/api/auth/login",
                                 "/api/auth/register").permitAll()
-                        .requestMatchers("/api/admin/**").hasRole(Role.ADMIN.name())
-                        .requestMatchers("/api/faculty/**").hasAnyRole(Role.FACULTY.name(), Role.ADMIN.name())
+                        .requestMatchers("/api/faculty/**").hasRole(Role.FACULTY.name())
                         .requestMatchers("/api/student/**").hasRole(Role.STUDENT.name())
-                        .requestMatchers("/api/audit-logs").hasAnyRole(AUDIT_READERS)
+                        .requestMatchers("/api/audit-logs").hasRole(Role.FACULTY.name())
                         .requestMatchers("/api/**").authenticated()
                         .anyRequest().denyAll())
                 .headers(headers -> {
