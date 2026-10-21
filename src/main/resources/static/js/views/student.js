@@ -3,7 +3,7 @@
  */
 
 import { h, replaceChildren } from '../dom.js';
-import { api, cachedGet, invalidate } from '../api.js';
+import { api, cachedGet, invalidate, poll } from '../api.js';
 import { isCurrent } from '../router.js';
 import { currentAccount } from '../store.js';
 import {
@@ -126,6 +126,11 @@ export async function renderStudentDashboard(container, route) {
 
   const data = await cachedGet('/student/dashboard', { onRefresh: paint });
   paint(data);
+
+  // The numbers move while the student is looking at them, so the screen reads them
+  // again on its own.
+  const stop = poll('/student/dashboard', { onRefresh: paint }, 30000);
+  container.dispose = stop;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -136,34 +141,42 @@ export async function renderStudentDashboard(container, route) {
  * Renders the attendance history of the signed in student.
  */
 export async function renderStudentAttendance(container, route) {
-  const rows = await cachedGet('/student/attendance');
-  if (!isCurrent(container, route)) {
-    return;
-  }
-
-  const historyTable = table(rows, [
-    { key: 'recordedAt', label: 'Recorded', render: (row) => formatDateTime(row.recordedAt) },
-    { key: 'status', label: 'Status', render: (row) => statusBadge(row.status) },
-    { key: 'method', label: 'Method', render: (row) => humanise(row.method) },
-    {
-      key: 'matchScore',
-      label: 'Match score',
-      align: 'right',
-      render: (row) => (row.matchScore === null || row.matchScore === undefined
-        ? '—'
-        : formatPercentage(row.matchScore * 100, 0))
+  const paint = (rows) => {
+    if (!isCurrent(container, route)) {
+      return;
     }
-  ], { empty: 'No attendance has been recorded yet.', emptyGlyph: '◷' });
 
-  container.replaceChildren(h('div.stack.stack-6', [
-    h('div.page-head', [
-      h('div', [
-        h('h1', 'My attendance'),
-        h('p.lead', 'Every record that was created for your account, newest first.')
-      ])
-    ]),
-    h('div.card', [h('div.card-body card-body-flush', historyTable)])
-  ]));
+    const historyTable = table(rows, [
+      { key: 'recordedAt', label: 'Recorded', render: (row) => formatDateTime(row.recordedAt) },
+      { key: 'status', label: 'Status', render: (row) => statusBadge(row.status) },
+      { key: 'method', label: 'Method', render: (row) => humanise(row.method) },
+      {
+        key: 'matchScore',
+        label: 'Match score',
+        align: 'right',
+        render: (row) => (row.matchScore === null || row.matchScore === undefined
+          ? '—'
+          : formatPercentage(row.matchScore * 100, 0))
+      }
+    ], { empty: 'No attendance has been recorded yet.', emptyGlyph: '◷' });
+
+    container.replaceChildren(h('div.stack.stack-6', [
+      h('div.page-head', [
+        h('div', [
+          h('h1', 'My attendance'),
+          h('p.lead', 'Every record that was created for your account, newest first.')
+        ])
+      ]),
+      h('div.card', [h('div.card-body card-body-flush', historyTable)])
+    ]));
+  };
+
+  const rows = await cachedGet('/student/attendance', { onRefresh: paint });
+  paint(rows);
+
+  // The history grows while the student is looking at it.
+  const stop = poll('/student/attendance', { onRefresh: paint }, 30000);
+  container.dispose = stop;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -294,18 +307,28 @@ export async function renderVerifyPresence(container, route) {
     ])
   ]);
 
-  const livePanel = sessions.length > 0
-    ? h('div.card', [
-      h('div.card-header', [h('h3', 'Classes taking attendance right now')]),
-      h('div.card-body card-body-flush', table(sessions, [
-        { key: 'subjectCode', label: 'Code' },
-        { key: 'subjectName', label: 'Subject' },
-        { key: 'section', label: 'Section' },
-        { key: 'room', label: 'Room' },
-        { key: 'facultyName', label: 'Teacher' }
-      ]))
-    ])
-    : h('div.card.card-pad', emptyState('No class is taking attendance at the moment. Check again during your lecture.', '◉'));
+  /**
+   * The list of the classes that are taking attendance right now.
+   */
+  const liveHost = h('div');
+  const paintLive = (fresh) => {
+    if (!isCurrent(container, route)) {
+      return;
+    }
+    replaceChildren(liveHost, fresh.length === 0
+      ? h('div.card.card-pad', emptyState('No class is taking attendance at the moment. Check again during your lecture.', '◉'))
+      : h('div.card', [
+        h('div.card-header', [h('h3', 'Classes taking attendance right now')]),
+        h('div.card-body card-body-flush', table(fresh, [
+          { key: 'subjectCode', label: 'Code' },
+          { key: 'subjectName', label: 'Subject' },
+          { key: 'section', label: 'Section' },
+          { key: 'room', label: 'Room' },
+          { key: 'facultyName', label: 'Teacher' }
+        ]))
+      ]));
+  };
+  paintLive(sessions);
 
   container.replaceChildren(h('div.stack.stack-6', [
     h('div.page-head', [
@@ -314,9 +337,17 @@ export async function renderVerifyPresence(container, route) {
         h('p.lead', 'Scan the classroom code and complete the camera check. Both have to succeed.')
       ])
     ]),
-    h('div.split-wide', [panel, h('div.stack.stack-4', [livePanel])]),
+    h('div.split-wide', [panel, h('div.stack.stack-4', [liveHost])]),
     result
   ]));
+
+  // A class may start while the student is on this screen, so the list is read again.
+  const stop = poll('/student/sessions/active', { onRefresh: paintLive }, 20000);
+  container.dispose = () => {
+    stop();
+    scanner.stop();
+    window.removeEventListener('veriqra:qr', onQr);
+  };
 }
 
 /* -------------------------------------------------------------------------- */

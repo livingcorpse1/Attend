@@ -196,6 +196,37 @@ export function prefetch(path, options = {}) {
 }
 
 /**
+ * Reads a resource again and again, so a screen with live numbers keeps itself
+ * up to date and nobody has to press a refresh button.
+ *
+ * <p>The answer is written to the cache as well, so the next screen that needs the
+ * same numbers has them at hand.
+ *
+ * @param {string} path Path below `/api`.
+ * @param {object} [options]
+ * @param {object} [options.params] Query parameters.
+ * @param {Function} [options.onRefresh] Called with every fresh answer.
+ * @param {number} [options.intervalMillis] How often the resource is read.
+ * @returns {Function} A function that stops the polling.
+ */
+export function poll(path, options = {}) {
+  const { params, onRefresh, intervalMillis = 30000 } = options;
+  const key = cacheKey(path, params);
+  const timer = window.setInterval(() => {
+    refresh(key, path, params)
+      .then((value) => {
+        if (onRefresh) {
+          onRefresh(value);
+        }
+      })
+      .catch(() => {
+        // A poll that fails is not worth a message: the screen keeps what it has.
+      });
+  }, intervalMillis);
+  return () => window.clearInterval(timer);
+}
+
+/**
  * Drops cached answers, either everything or the ones below a path.
  */
 export function invalidate(prefix) {

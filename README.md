@@ -42,11 +42,21 @@ every change is written to the audit trail.
 
 ### The profile
 
-Both roles have a profile, and it is the one place that holds the account.
+Both roles have a profile, and it is the one place that holds the account. The name at
+the bottom of the menu is the way into it, and the sign out lives there as well.
 
 The student finds the account details, the identity check with the camera, and the
 biometric data that is stored about them. The teacher finds the account details and the
 subjects and class sections they teach.
+
+A student whose identity check is still open keeps the rest of the application: the
+timetable, the attendance history and the classes that are taking attendance all stay
+open, and only the two calls that mark an attendance are closed. The check is a step, not
+a locked door.
+
+The camera is mirrored in the preview, so the student sees themselves the way a
+colleague sees them. The frames that are sent to the server are not mirrored, because a
+mirrored face would not match the enrolment.
 
 ### Attendance follows the timetable
 
@@ -94,9 +104,9 @@ so the application can be tried out, and it can be switched off with
 
 ## The identity check
 
-A student creates an account themselves. The account is created in a *pending* state:
-it can sign in, but every other part of the student API is closed to it until the face
-check has passed.
+A student creates an account themselves. The account is created in a *pending* state: it
+can sign in and use the parts of the application that only read, and it cannot mark an
+attendance until the face check has passed.
 
 1. The student accepts the biometric data notice (the version is recorded).
 2. The server issues a random liveness challenge, for example *turn your head to your
@@ -105,6 +115,10 @@ check has passed.
 4. The server checks the frame quality, the head movement, that the frames show the same
    person, and that the descriptor matches the enrolment.
 5. A 128 dimensional template is stored. The photographs are not part of the template.
+
+The exposure of the face is judged on the face and not on the whole frame: the brightest
+tenth of the crop has to reach a luminance of 45, and a portrait with a dark background
+is not a dark portrait.
 
 The student can withdraw the template at any time from their **profile**, which is also
 where the identity check itself lives.
@@ -271,6 +285,10 @@ localhost.
 The suite covers the QR token rules, the whole attendance journey and the real computer
 vision pipeline. The vision tests are skipped when the models are not installed.
 
+The sessions of the tests are kept in the memory of the process, so a request can carry a
+plain session object. A deployment keeps them in the database, so a restart of the server
+does not sign everybody out.
+
 Two optional client checks:
 
 ```powershell
@@ -281,11 +299,33 @@ node --experimental-websocket scripts\smoke-client.mjs
 The second one starts a headless browser, signs in as a teacher and as a student, visits
 every screen and fails on the first console error.
 
+The third one goes further: it drives the camera with a fake device that plays a real
+portrait and a real classroom code, so the identity check, the code scanner and the
+screens are tested with pictures and not with a stub.
+
+```powershell
+# The picture of the classroom code, drawn with the library of the application.
+node --experimental-websocket scripts\qr-picture.mjs target\qr.png
+
+# The camera: the face and the code in one frame, and a face that turns.
+java scripts\TurnFace.java src\test\resources\fixtures\portrait-a.jpg target\face-left.jpg -60 193 300,20,400,500
+java scripts\FakeCamera.java target\camera.y4m 640 480 "target\face.jpg+target\qr.png:10" "target\face-left.jpg+target\qr.png:10"
+
+# The check itself.
+node --experimental-websocket scripts\verify-features.mjs
+```
+
 And a soak, which leaves the server alone for a while and then checks that the database
 is still reachable. That is the check that catches a pooler dropping idle connections:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts\soak-database.ps1 -Minutes 10
+```
+
+To look at the data without changing it:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\query.ps1 "select email, face_state from app_user"
 ```
 
 ---
@@ -338,8 +378,11 @@ that matter most:
 | `VERIQRA_MODELS_DIR` | Where the ONNX models live. |
 | `BIOMETRIC_PROFILE` | The pair of models: `yunet-sface` or `scrfd-arcface`. |
 | `BIOMETRIC_DETECTION_THRESHOLD` | The confidence a detection has to reach. Zero uses the threshold of the pair. |
+| `BIOMETRIC_MIN_HIGHLIGHT_LUMA` | The luminance the brightest tenth of the face has to reach. |
+| `BIOMETRIC_MAX_MIDDLE_LUMA` | The luminance the middle of the face must not go past. |
 | `BIOMETRIC_MATCH_THRESHOLD` | The cosine similarity a live face must reach. |
 | `BIOMETRIC_LIVENESS_YAW_DELTA` | How far the head must turn to prove liveness. |
+| `SESSION_TIMEOUT_MINUTES` | How long a session lasts. The sessions live in the database. |
 | `INSTITUTION_TIMEZONE` | The timezone the times are shown in. |
 
 ---

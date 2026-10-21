@@ -143,12 +143,16 @@ public class FaceRecognitionService {
                 return CaptureAnalysis.rejected("IMAGE_BLURRY",
                         "The camera image is too blurry. Hold the device steady and focus on your face.");
             }
-            double brightness = frame.meanLuma();
-            if (brightness < properties.getBiometric().getMinimumBrightness()) {
+            // The exposure is judged on the face and not on the whole frame. A portrait
+            // with a dark background is not a dark portrait, and the mean of the frame
+            // says nothing about the face the recogniser is going to look at.
+            int highlight = aligned.percentileLuma(0.90);
+            if (highlight < properties.getBiometric().getMinimumHighlightLuma()) {
                 return CaptureAnalysis.rejected("IMAGE_TOO_DARK",
                         "The scene is too dark. Face a light source and try again.");
             }
-            if (brightness > properties.getBiometric().getMaximumBrightness()) {
+            int middle = aligned.percentileLuma(0.50);
+            if (middle > properties.getBiometric().getMaximumMiddleLuma()) {
                 return CaptureAnalysis.rejected("IMAGE_TOO_BRIGHT",
                         "The image is overexposed. Move away from direct light and try again.");
             }

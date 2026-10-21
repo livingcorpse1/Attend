@@ -92,6 +92,11 @@ export async function runLivenessCapture({ panel, challenge, submit, onFinished 
       return undefined;
     } finally {
       cleanup();
+      // The capture is over, so the button must not keep saying that it is capturing.
+      if (button.disabled) {
+        button.disabled = false;
+        button.textContent = 'Try again';
+      }
     }
   };
 

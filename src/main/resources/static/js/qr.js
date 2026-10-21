@@ -40,7 +40,7 @@ export function scannerPanel() {
   const status = h('p.text-sm.text-muted', 'Point the camera at the code your teacher is showing.');
   const reticle = h('div.reticle');
   const caption = h('div.caption', 'The camera is off');
-  const frame = h('div.camera-frame', [video, canvas, h('div.overlay', reticle), caption]);
+  const frame = h('div.camera-frame.is-scanning', [video, canvas, h('div.overlay', reticle), caption]);
 
   const startButton = h('button.button.button-primary', { type: 'button' }, 'Start the camera');
   const stopButton = h('button.button.button-secondary', { type: 'button', disabled: true }, 'Stop the camera');

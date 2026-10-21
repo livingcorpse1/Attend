@@ -11,15 +11,28 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.HandlerInterceptor;
 
 /**
- * Blocks student endpoints until the identity check has been completed.
+ * Blocks the student endpoints that need a verified face.
  *
  * <p>Sign up is the first thing a student does, and the platform requires a verified face
  * before the student can take part in attendance. Rather than scattering that check over
  * every controller, it is enforced once here for the whole student API. The biometric
  * endpoints are excluded so the student can actually complete the check.
+ *
+ * <p>The screens a student only reads are not blocked. A student who has not run the
+ * identity check yet can still see their timetable, their attendance history and the
+ * classes that are taking attendance. Only the two calls that mark an attendance are
+ * closed, because those are the ones that need the face. Locking a student out of the
+ * whole application would leave them with nothing to do but the check itself.
  */
 @Component
 public class FaceVerificationInterceptor implements HandlerInterceptor {
+
+    /** The student endpoints that only read and stay open before the check. */
+    private static final java.util.List<String> READ_ONLY_PATHS = java.util.List.of(
+            "/api/student/dashboard",
+            "/api/student/attendance",
+            "/api/student/timetable",
+            "/api/student/sessions/active");
 
     private final UserRepository users;
     private final BiometricRepository biometrics;
@@ -36,6 +49,10 @@ public class FaceVerificationInterceptor implements HandlerInterceptor {
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler)
             throws Exception {
+
+        if ("GET".equals(request.getMethod()) && READ_ONLY_PATHS.contains(request.getRequestURI())) {
+            return true;
+        }
 
         var authentication = request.getUserPrincipal();
         if (authentication == null || authentication.getName() == null) {

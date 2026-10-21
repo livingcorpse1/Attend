@@ -45,6 +45,7 @@
   color: #ffffff;
   font-size: var(--text-sm);
   font-weight: var(--weight-bold);
+  object-fit: cover;
 }
 
 .brand small {
@@ -113,9 +114,40 @@
   font-size: var(--text-sm);
 }
 
+/*
+ * The account at the bottom of the sidebar is the way into the profile, so it looks
+ * like the other entries of the menu.
+ */
+.sidebar-foot .nav-account {
+  width: 100%;
+  justify-content: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  text-align: left;
+  background: none;
+  border: 1px solid transparent;
+  cursor: pointer;
+  color: var(--nav-ink);
+}
+
+.sidebar-foot .nav-account:hover {
+  background: var(--nav-hover);
+  color: var(--nav-ink-active);
+}
+
+.nav-account-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.25;
+}
+
 .sidebar-foot .name {
   font-weight: var(--weight-medium);
   color: var(--nav-ink-active);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .sidebar-foot .role {

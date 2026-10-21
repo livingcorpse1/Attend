@@ -7,6 +7,12 @@ spring:
   flyway:
     enabled: true
     locations: classpath:db/migration
+  # The tests keep their sessions in the memory of the process, so a request can carry
+  # a plain session object. A deployment keeps them in the database, which is what the
+  # browser check covers.
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.session.SessionAutoConfiguration
 
 veriqra:
   institution-name: Test College

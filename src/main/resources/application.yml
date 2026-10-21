@@ -67,7 +67,7 @@ veriqra:
   timezone: ${INSTITUTION_TIMEZONE:Asia/Kolkata}
   low-attendance-threshold: ${LOW_ATTENDANCE_THRESHOLD:75}
   # The college. There is no administration, so the institution is named here.
-  institution-name: ${INSTITUTION_NAME:APSHAH College}
+  institution-name: ${INSTITUTION_NAME:Apsit college}
   institution-location: ${INSTITUTION_LOCATION:Anandnagar, Thane}
   # The demonstration accounts. Switch them off for a real deployment.
   demo-data:
@@ -92,8 +92,9 @@ veriqra:
     required-frames: ${BIOMETRIC_REQUIRED_FRAMES:5}
     minimum-face-width-ratio: ${BIOMETRIC_MIN_FACE_RATIO:0.12}
     minimum-sharpness: ${BIOMETRIC_MIN_SHARPNESS:40}
-    minimum-brightness: ${BIOMETRIC_MIN_BRIGHTNESS:35}
-    maximum-brightness: ${BIOMETRIC_MAX_BRIGHTNESS:225}
+    # The exposure is judged on the face: the brightest tenth of it has to reach this.
+    minimum-highlight-luma: ${BIOMETRIC_MIN_HIGHLIGHT_LUMA:45}
+    maximum-middle-luma: ${BIOMETRIC_MAX_MIDDLE_LUMA:225}
     challenge-ttl-seconds: ${BIOMETRIC_CHALLENGE_TTL:120}
   storage:
     provider: ${STORAGE_PROVIDER:local}

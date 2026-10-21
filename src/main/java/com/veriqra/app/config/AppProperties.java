@@ -214,11 +214,15 @@ public class AppProperties {
         /** Minimum sharpness (Laplacian variance) of the face crop. */
         private float minimumSharpness = 40f;
 
-        /** Minimum mean brightness of the face crop. */
-        private float minimumBrightness = 35f;
+        /**
+         * The luminance the brightest tenth of the face crop has to reach.
+         *
+         * <p>A face that is lit has highlights, even when the picture around it is dark.
+         */
+        private int minimumHighlightLuma = 45;
 
-        /** Maximum mean brightness of the face crop. */
-        private float maximumBrightness = 225f;
+        /** The luminance the middle of the face crop must not go past. */
+        private int maximumMiddleLuma = 225;
 
         /** Lifetime of a liveness challenge, in seconds. */
         private int challengeTtlSeconds = 120;
@@ -310,20 +314,20 @@ public class AppProperties {
             this.minimumSharpness = minimumSharpness;
         }
 
-        public float getMinimumBrightness() {
-            return minimumBrightness;
+        public int getMinimumHighlightLuma() {
+            return minimumHighlightLuma;
         }
 
-        public void setMinimumBrightness(float minimumBrightness) {
-            this.minimumBrightness = minimumBrightness;
+        public void setMinimumHighlightLuma(int minimumHighlightLuma) {
+            this.minimumHighlightLuma = minimumHighlightLuma;
         }
 
-        public float getMaximumBrightness() {
-            return maximumBrightness;
+        public int getMaximumMiddleLuma() {
+            return maximumMiddleLuma;
         }
 
-        public void setMaximumBrightness(float maximumBrightness) {
-            this.maximumBrightness = maximumBrightness;
+        public void setMaximumMiddleLuma(int maximumMiddleLuma) {
+            this.maximumMiddleLuma = maximumMiddleLuma;
         }
 
         public int getChallengeTtlSeconds() {

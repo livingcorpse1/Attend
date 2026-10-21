@@ -4,7 +4,7 @@
 
 import { h, replaceChildren } from '../dom.js';
 import { isCurrent } from '../router.js';
-import { api, cachedGet, invalidate } from '../api.js';
+import { api, cachedGet, invalidate, poll } from '../api.js';
 import {
   confirmDialog,
   emptyState,
@@ -95,6 +95,11 @@ export async function renderFacultyDashboard(container, route) {
 
   const data = await cachedGet('/faculty/dashboard', { onRefresh: paint });
   paint(data);
+
+  // The numbers on the dashboard move while the teacher is looking at them, so the
+  // screen reads them again on its own.
+  const stop = poll('/faculty/dashboard', { onRefresh: paint }, 30000);
+  container.dispose = stop;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -116,7 +121,6 @@ export async function renderFacultyAttendance(container, route) {
   if (!isCurrent(container, route)) {
     return;
   }
-
   const sessionArea = h('div');
 
   const resume = async (session) => {
@@ -171,6 +175,20 @@ export async function renderFacultyAttendance(container, route) {
       : lectures.map(lectureRow))
   ]);
 
+  /**
+   * Redraws the lectures of the day, so a lecture that starts while the screen is
+   * open becomes available without a refresh.
+   */
+  const paintLectures = (fresh) => {
+    if (!isCurrent(container, route)) {
+      return;
+    }
+    const body = setupCard.querySelector('.card-body');
+    replaceChildren(body, fresh.length === 0
+      ? [emptyState('You have no lectures scheduled today, so there is no attendance to take.', '▤')]
+      : fresh.map(lectureRow));
+  };
+
   container.replaceChildren(h('div.stack.stack-6', [
     h('div.page-head', [
       h('div', [
@@ -187,6 +205,11 @@ export async function renderFacultyAttendance(container, route) {
     replaceChildren(sessionArea, h('div.card.card-pad', emptyState(
       'No session is running. Start one to project the classroom code.', '◉')));
   }
+
+  // The lectures of the day are read again, so a teacher who opens the screen before
+  // their lecture starts finds it there.
+  const stop = poll('/faculty/schedule', { onRefresh: paintLectures }, 30000);
+  container.dispose = stop;
 
   /**
    * Renders the running session: the rotating code and the live roster.
@@ -279,7 +302,7 @@ export async function renderFacultyAttendance(container, route) {
       invalidate('/faculty/sessions');
       invalidate('/faculty/dashboard');
       toast('The session has been closed.', 'success');
-      await renderFacultyAttendance(container);
+      await renderFacultyAttendance(container, container.dataset.route);
     };
 
     replaceChildren(sessionArea, h('div.stack.stack-5', [
@@ -543,7 +566,9 @@ async function openSlotEditor(container, classes, slots, lecture, position) {
 
   invalidate('/faculty/timetable');
   invalidate('/faculty/dashboard');
-  await renderFacultyTimetable(container);
+  // The route is read from the container, so the screen knows it is still the current
+  // one and paints the lecture that was just added.
+  await renderFacultyTimetable(container, container.dataset.route);
 }
 
 /* -------------------------------------------------------------------------- */

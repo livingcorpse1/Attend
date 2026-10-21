@@ -184,6 +184,36 @@ public final class FaceImage {
         return gray.length == 0 ? 0d : (double) sum / gray.length;
     }
 
+    /**
+     * A percentile of the luminance of the raster, in the 0..255 range.
+     *
+     * <p>The mean is a poor measure of how well a face is exposed. A portrait with a
+     * dark background has a low mean even when the face itself is well lit, and the
+     * other way round. The percentiles describe the bright and the dark ends of the
+     * picture, which is what says whether the face is usable.
+     *
+     * @param fraction a number between 0 and 1
+     */
+    public int percentileLuma(double fraction) {
+        byte[] gray = toGrayscale();
+        if (gray.length == 0) {
+            return 0;
+        }
+        int[] histogram = new int[256];
+        for (byte value : gray) {
+            histogram[value & 0xFF]++;
+        }
+        int target = (int) Math.round(gray.length * Math.max(0d, Math.min(1d, fraction)));
+        int seen = 0;
+        for (int i = 0; i < histogram.length; i++) {
+            seen += histogram[i];
+            if (seen >= target) {
+                return i;
+            }
+        }
+        return 255;
+    }
+
     /** Mean absolute difference between two equally sized images, in 0..255 luminance units. */
     public static double meanAbsoluteDifference(FaceImage left, FaceImage right) {
         if (left.width != right.width || left.height != right.height) {

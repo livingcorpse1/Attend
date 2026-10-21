@@ -121,16 +121,20 @@ The signed in account.
 
 ## Student routes
 
-All routes below require the `STUDENT` role. Except for the `biometric` routes they
-also require a verified face; otherwise the answer is `403 FACE_VERIFICATION_REQUIRED`.
+All routes below require the `STUDENT` role. The routes that only read are open before the
+identity check has been done, so a student whose check is still open keeps the
+application. The two routes that mark an attendance need a verified face; otherwise the
+answer is `403 FACE_VERIFICATION_REQUIRED`.
 
 ### `GET /api/student/dashboard`
 
-The numbers, the per subject totals, the recent check-ins and the timetable.
+The numbers, the per subject totals, the recent check-ins and the timetable. Open before
+the identity check has been done, so a student whose check is still open is not locked
+out of the application.
 
 ### `GET /api/student/attendance`
 
-The attendance history, newest first.
+The attendance history, newest first. Open before the identity check has been done.
 
 ```json
 [
@@ -140,7 +144,8 @@ The attendance history, newest first.
 
 ### `GET /api/student/timetable`
 
-The weekly schedule of the classes the student is enrolled in.
+The weekly schedule of the classes the student is enrolled in. Open before the identity
+check has been done.
 
 ### `GET /api/student/sessions/active`
 

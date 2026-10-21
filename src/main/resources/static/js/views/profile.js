@@ -6,10 +6,10 @@
  */
 
 import { h } from '../dom.js';
-import { cachedGet, invalidate } from '../api.js';
+import { api, cachedGet, invalidate } from '../api.js';
 import { isCurrent, navigate } from '../router.js';
 import { currentAccount, refreshAccount } from '../store.js';
-import { table } from '../ui.js';
+import { table, toast } from '../ui.js';
 import { identityCheckSection, biometricPanel } from './verify.js';
 
 /**
@@ -82,7 +82,7 @@ async function renderStudentProfile(container, route, account) {
     ]),
     h('div.split-wide', [
       h('div.stack.stack-6', [details, check]),
-      h('div.stack.stack-6', [biometric])
+      h('div.stack.stack-6', [biometric, sessionCard()])
     ])
   ]));
 }
@@ -135,7 +135,10 @@ async function renderFacultyProfile(container, route, account) {
         h('p.lead', 'Your account and the subjects you teach.')
       ])
     ]),
-    h('div.split-wide', [details, teaching])
+    h('div.split-wide', [
+      h('div.stack.stack-6', [details, sessionCard()]),
+      teaching
+    ])
   ]));
 }
 
@@ -149,5 +152,39 @@ function detailCard(title, rows) {
       h('span.text-sm.text-muted', label),
       value instanceof Node ? value : h('span.text-sm', value)
     ])))
+  ]);
+}
+
+/**
+ * The card that ends the session.
+ *
+ * <p>The sign out lives here, so the sidebar holds nothing but the way into the
+ * profile.
+ */
+function sessionCard() {
+  const button = h('button.button.button-secondary', { type: 'button' }, 'Sign out');
+  button.onclick = async () => {
+    button.disabled = true;
+    try {
+      await api.post('/auth/logout');
+      // The account is gone, so the shell is torn down and the sign in screen comes back.
+      const { setState } = await import('../store.js');
+      setState({ account: null });
+      const root = document.getElementById('app');
+      if (root) {
+        root.replaceChildren();
+      }
+      navigate('/login', { replace: true });
+    } catch (failure) {
+      button.disabled = false;
+      toast(failure.message, 'error');
+    }
+  };
+  return h('div.card', [
+    h('div.card-header', [h('h3', 'Session')]),
+    h('div.card-body.stack.stack-3', [
+      h('p.text-sm.text-muted', 'Signing out ends the session on this device. Your attendance and your enrolment stay where they are.'),
+      h('div', button)
+    ])
   ]);
 }

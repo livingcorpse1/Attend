@@ -76,10 +76,14 @@ class AttendanceFlowIntegrationTest {
     }
 
     @Test
-    void aStudentCannotReachTheWorkspaceBeforeTheIdentityCheck() throws Exception {
+    void aStudentCanReadTheirOwnScreensBeforeTheIdentityCheck() throws Exception {
+        // The screens a student only reads stay open, so the check is not a dead end.
         mvc.perform(get("/api/student/dashboard").session(studentSession))
-                .andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.code").value("FACE_VERIFICATION_REQUIRED"));
+                .andExpect(status().isOk());
+        mvc.perform(get("/api/student/timetable").session(studentSession))
+                .andExpect(status().isOk());
+        mvc.perform(get("/api/student/attendance").session(studentSession))
+                .andExpect(status().isOk());
     }
 
     @Test
@@ -93,7 +97,6 @@ class AttendanceFlowIntegrationTest {
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.code").value("FACE_VERIFICATION_REQUIRED"));
     }
-
     @Test
     void theCompleteJourneyEndsInAVerifiedAttendanceRecord() throws Exception {
         long session = startSession();
@@ -229,7 +232,16 @@ class AttendanceFlowIntegrationTest {
                 .andExpect(jsonPath("$.role").value("STUDENT"))
                 .andExpect(jsonPath("$.faceState").value("PENDING"));
 
+        // The screens that only read stay open, so the student is not locked out of the
+        // application while the check is open.
         mvc.perform(get("/api/student/dashboard").session(fresh))
+                .andExpect(status().isOk());
+
+        // The attendance cannot be marked yet.
+        mvc.perform(post("/api/student/attendance/scan").with(csrf())
+                        .session(fresh)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"token\":\"anything\"}"))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.code").value("FACE_VERIFICATION_REQUIRED"));
     }

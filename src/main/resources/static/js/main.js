@@ -42,16 +42,14 @@ const NAVIGATION = {
     { path: '/dashboard', label: 'Dashboard', glyph: '⌂' },
     { path: '/verify-presence', label: 'Verify presence', glyph: '◎' },
     { path: '/attendance', label: 'My attendance', glyph: '◷' },
-    { path: '/timetable', label: 'Timetable', glyph: '▤' },
-    { path: '/profile', label: 'Profile', glyph: '☺' }
+    { path: '/timetable', label: 'Timetable', glyph: '▤' }
   ],
   FACULTY: [
     { path: '/dashboard', label: 'Dashboard', glyph: '⌂' },
     { path: '/attendance', label: 'Take attendance', glyph: '◎' },
     { path: '/classes', label: 'My classes', glyph: '▤' },
     { path: '/timetable', label: 'Timetable', glyph: '▥' },
-    { path: '/reports', label: 'Reports', glyph: '▥' },
-    { path: '/profile', label: 'Profile', glyph: '☺' }
+    { path: '/reports', label: 'Reports', glyph: '▥' }
   ]
 };
 
@@ -198,8 +196,9 @@ function registerRoutes() {
       navigate('/dashboard', { replace: true });
       return false;
     }
-    if (account.role === 'STUDENT' && account.faceState !== 'VERIFIED' && path !== '/profile') {
-      // The identity check is part of the profile, so that is where the student goes.
+    if (account.role === 'STUDENT' && account.faceState !== 'VERIFIED' && path === '/verify-presence') {
+      // The attendance cannot be marked before the check, so the student is sent to the
+      // profile where the check lives. Every other screen stays open.
       navigate('/profile', { replace: true });
       return false;
     }
@@ -268,16 +267,27 @@ function ensureShell() {
 
   const shell = h('div.shell', [
     h('aside.sidebar', [
-      h('div.brand', [h('span.brand-mark', 'V'), h('span', 'VeriQra')]),
+      h('div.brand', [
+        h('img.brand-mark', { src: '/icons/logo.png', alt: '', width: '30', height: '30' }),
+        h('span', 'VeriQra')
+      ]),
       h('div.nav-group', [
         h('div.nav-label', 'Workspace'),
         h('nav.stack.stack-1', navItems)
       ]),
       h('div.sidebar-foot', [
-        h('div.name', account.fullName),
-        h('div.role', account.role.toLowerCase()),
-        h('button.nav-item', { type: 'button', id: 'logout' },
-          [h('span.nav-icon', '↪'), h('span', 'Sign out')])
+        h('button.nav-item.nav-account', {
+          type: 'button',
+          id: 'account',
+          'aria-label': 'Your profile',
+          onclick: () => navigate('/profile')
+        }, [
+          h('span.nav-icon', '☺'),
+          h('span.nav-account-text', [
+            h('span.name', account.fullName),
+            h('span.role', account.role.toLowerCase())
+          ])
+        ])
       ])
     ]),
     h('div.main', [
@@ -285,6 +295,10 @@ function ensureShell() {
         h('h2', { id: 'page-title' }, PAGE_TITLES[currentPathSafe()] || 'VeriQra'),
         h('div.topbar-actions', [
           institution().name ? h('span.badge', institution().name) : null,
+          account.role === 'STUDENT'
+            ? h('a.button.button-primary.button-sm', { href: '#/verify-presence', id: 'scan-shortcut' },
+              '◎ Scan the code')
+            : null,
           h('button.icon-button', { type: 'button', id: 'theme-toggle', 'aria-label': 'Switch the colour theme' }, '◐')
         ])
       ]),
@@ -294,12 +308,6 @@ function ensureShell() {
 
   replaceChildren(root, shell);
   shell.querySelector('#theme-toggle').onclick = () => toggleTheme();
-  shell.querySelector('#logout').onclick = async () => {
-    await api.post('/auth/logout');
-    setState({ account: null });
-    replaceChildren(root);
-    navigate('/login');
-  };
 
   highlightNavigation();
   return content;
