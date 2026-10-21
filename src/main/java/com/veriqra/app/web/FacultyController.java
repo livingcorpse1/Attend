@@ -74,12 +74,11 @@ public class FacultyController {
     public Map<String, Object> dashboard(Authentication authentication) {
         long facultyId = currentAccount.id(authentication);
 
-        // The dashboard is five independent reads. They are sent together so the screen
-        // waits for the slowest one instead of for all five in a row.
+        // The dashboard is assembled from four independent reads. They are sent together
+        // so the screen waits for the slowest one instead of for all four in a row.
         List<Object> results = parallel.runAll(
                 () -> reports.subjectAttendanceForFaculty(facultyId),
                 () -> attendance.sessions(facultyId, null, 8),
-                () -> reports.lowAttendanceForFaculty(facultyId),
                 () -> academic.listClassesForFaculty(facultyId),
                 () -> timetableService.list(facultyId));
 
@@ -88,11 +87,9 @@ public class FacultyController {
         @SuppressWarnings("unchecked")
         List<SessionView> recent = (List<SessionView>) results.get(1);
         @SuppressWarnings("unchecked")
-        List<LowAttendanceView> lowAttendance = (List<LowAttendanceView>) results.get(2);
+        List<ClassView> classes = (List<ClassView>) results.get(2);
         @SuppressWarnings("unchecked")
-        List<ClassView> classes = (List<ClassView>) results.get(3);
-        @SuppressWarnings("unchecked")
-        List<TimetableView> diary = (List<TimetableView>) results.get(4);
+        List<TimetableView> diary = (List<TimetableView>) results.get(3);
 
         long sessions = subjects.stream().mapToLong(SubjectAttendanceView::sessions).sum();
         long present = subjects.stream().mapToLong(SubjectAttendanceView::attended).sum();
@@ -103,13 +100,11 @@ public class FacultyController {
         body.put("sessionsHeld", sessions);
         body.put("recordsMarked", present);
         body.put("classesTaught", classes.size());
-        body.put("studentsAtRisk", lowAttendance.size());
         body.put("activeSession", recent.stream()
                 .filter(session -> "ACTIVE".equals(session.status()))
                 .findFirst().orElse(null));
         body.put("recentSessions", recent);
         body.put("subjects", subjects);
-        body.put("lowAttendance", lowAttendance);
         body.put("timetable", diary);
         return body;
     }

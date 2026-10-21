@@ -1,9 +1,11 @@
 /**
- * Application state.
+ * The application state.
  *
  * A tiny observable store. Components subscribe to the slices they care about instead
  * of polling the DOM.
  */
+
+import { api } from './api.js';
 
 const state = {
   account: null,
@@ -87,4 +89,21 @@ export function toggleTheme() {
   localStorage.setItem('veriqra.theme', next);
   setState({ theme: next });
   applyTheme();
+}
+
+/**
+ * Reads the account from the server and puts it in the store.
+ *
+ * <p>The store is filled once, when the application starts. Anything that changes the
+ * account, the identity check for instance, has to refresh it. Without this the route
+ * guard still sees the old face state and sends the user back where they came from.
+ */
+export async function refreshAccount() {
+  try {
+    const account = await api.get('/auth/me');
+    setState({ account });
+    return account;
+  } catch (failure) {
+    return state.account;
+  }
 }

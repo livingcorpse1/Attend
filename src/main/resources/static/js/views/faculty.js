@@ -44,12 +44,7 @@ export async function renderFacultyDashboard(container, route) {
       }),
       statTile({ label: 'Sessions held', value: String(data.sessionsHeld), foot: 'Since the semester started' }),
       statTile({ label: 'Records marked', value: String(data.recordsMarked), foot: 'Present entries recorded' }),
-      statTile({
-        label: 'Students at risk',
-        value: String(data.studentsAtRisk),
-        foot: 'Below the 75% threshold',
-        tone: data.studentsAtRisk > 0 ? 'warn' : 'good'
-      })
+      statTile({ label: 'Classes taught', value: String(data.classesTaught), foot: 'Subjects assigned to you' })
     ]);
 
     const subjectTable = table(data.subjects, [
@@ -59,21 +54,6 @@ export async function renderFacultyDashboard(container, route) {
       { key: 'attended', label: 'Present', align: 'right' },
       { key: 'percentage', label: 'Rate', align: 'right', render: (row) => formatPercentage(row.percentage) }
     ], { empty: 'No sessions have been taken yet.' });
-
-    const riskTable = table(data.lowAttendance, [
-      { key: 'studentName', label: 'Student' },
-      { key: 'studentNumber', label: 'Roll number' },
-      { key: 'subjectCode', label: 'Subject' },
-      { key: 'sessions', label: 'Held', align: 'right' },
-      { key: 'attended', label: 'Present', align: 'right' },
-      {
-        key: 'percentage',
-        label: 'Rate',
-        align: 'right',
-        render: (row) => h('span', { style: { color: 'var(--danger)', fontWeight: '600' } },
-          formatPercentage(row.percentage))
-      }
-    ], { empty: 'Every student is above the threshold. Well done.', emptyGlyph: '✓' });
 
     const sessionTable = table(data.recentSessions, [
       { key: 'startedAt', label: 'Started', render: (row) => formatDateTime(row.startedAt) },
@@ -106,16 +86,9 @@ export async function renderFacultyDashboard(container, route) {
           h('div.card-body card-body-flush', subjectTable)
         ]),
         h('div.card', [
-          h('div.card-header', [
-            h('h3', 'Students below the threshold'),
-            h('a.button.button-secondary.button-sm', { href: '/api/faculty/reports/low-attendance.csv', download: '' }, 'Export')
-          ]),
-          h('div.card-body card-body-flush', riskTable)
+          h('div.card-header', [h('h3', 'Recent sessions')]),
+          h('div.card-body card-body-flush', sessionTable)
         ])
-      ]),
-      h('div.card', [
-        h('div.card-header', [h('h3', 'Recent sessions')]),
-        h('div.card-body card-body-flush', sessionTable)
       ])
     ]));
   };
@@ -169,6 +142,9 @@ export async function renderFacultyAttendance(container, route) {
         classId: Number(select.value),
         title: titleInput.value.trim() || null
       });
+      // The list of sessions and the dashboard changed.
+      invalidate('/faculty/sessions');
+      invalidate('/faculty/dashboard');
       toast('Attendance session started.', 'success');
       await resume(session);
     } catch (failure) {
@@ -295,6 +271,8 @@ export async function renderFacultyAttendance(container, route) {
       }
       stop();
       await api.post(`/faculty/sessions/${session.id}/close`);
+      invalidate('/faculty/sessions');
+      invalidate('/faculty/dashboard');
       toast('The session has been closed.', 'success');
       await renderFacultyAttendance(container);
     };
@@ -390,6 +368,7 @@ async function markAttendance(sessionId, student) {
 
   try {
     await api.patch(`/faculty/sessions/${sessionId}/roster/${student.studentId}`, outcome);
+    invalidate('/faculty/dashboard');
     toast('The record was updated and written to the audit trail.', 'success');
   } catch (failure) {
     toast(failure.message, 'error');

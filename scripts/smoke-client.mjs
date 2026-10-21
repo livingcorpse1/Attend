@@ -293,6 +293,14 @@ async function run() {
   check('the teacher dashboard shows the fortnight calendar',
     await evaluate('document.querySelectorAll(".calendar-day").length === 14'));
 
+  // The arrows must replace the fortnight, not pile a new one on top of it.
+  await evaluate('document.querySelectorAll(".card .card-header .icon-button")[1].click()');
+  await new Promise((resolve) => setTimeout(resolve, 400));
+  check('the calendar does not duplicate its rows when the arrows are used',
+    await evaluate('document.querySelectorAll(".calendar-day").length === 14'));
+  check('the calendar header still shows one week',
+    await evaluate('document.querySelectorAll(".calendar .calendar-head").length === 7'));
+
   await evaluate('location.hash = "#/attendance"');
   await waitFor('document.querySelector("#class-choice") !== null', 'the live attendance screen');
   check('the live attendance screen renders',
@@ -319,6 +327,22 @@ async function run() {
   await evaluate('location.hash = "#/biometric"');
   await waitFor('document.querySelector("#view .card") !== null', 'the biometric screen');
   check('the biometric screen renders', await evaluate('document.querySelector("#view") !== null'));
+
+  // The student workspace has to be as quick as the teacher one.
+  await evaluate('location.hash = "#/dashboard"');
+  await waitFor('document.querySelector(".stat-value") !== null', 'the student dashboard');
+  check('the student dashboard renders statistics',
+    await evaluate('document.querySelectorAll(".stat-value").length >= 4'));
+
+  // The account in the store has to be refreshable. The identity check changes it, and
+  // without a refresh the route guard still sees the old state and sends the student
+  // back to the check.
+  check('the account can be refreshed after the identity check',
+    await evaluate(`(async () => {
+      const { refreshAccount } = await import('/js/store.js');
+      const account = await refreshAccount();
+      return Boolean(account) && account.role === 'STUDENT';
+    })()`));
 }
 
 let failed = false;

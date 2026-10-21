@@ -55,14 +55,23 @@ weekly schedule, is data, held in the database and entered by an administrator.
 
 The database is a few hundred milliseconds away, so the shape of the queries matters.
 
-* The dashboard sends its five independent reads at the same time instead of one after
+* The dashboard sends its four independent reads at the same time instead of one after
   the other. That alone took the screen from 3.2 seconds to 0.7.
 * The list of sessions reads the classes and the present counts once for the whole list
   instead of once per session. That was the last N+1 and it cost 2.4 seconds.
 * The client keeps the last answer for every screen, refreshes it in the background and
-  shows it straight away, and warms a screen when the pointer rests on it.
+  shows it straight away, and warms a screen when the pointer rests on it. The teacher
+  and the student screens both do this.
+* The screens that change the data, starting a session or marking attendance, drop the
+  affected entries from the cache so the next read is fresh.
 * The connection pool is opened while the application starts, so the first person to
   open the dashboard does not pay for the handshake.
+
+### The identity check hands over
+
+Finishing the identity check changes the account. The client reads the account again
+before it moves on, otherwise the route guard still sees the pending state and sends the
+student straight back to the check. There is a test for it.
 
 ### Surviving the pooler
 

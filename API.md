@@ -235,9 +235,8 @@ own sessions.
 
 ### `GET /api/faculty/dashboard`
 
-The totals, the recent sessions, the per subject figures, the students below the
-threshold and the whole teaching diary, which the client turns into the fortnight
-calendar.
+The totals, the recent sessions, the per subject figures and the whole teaching diary,
+which the client turns into the fortnight calendar.
 
 ### `GET /api/faculty/classes`
 

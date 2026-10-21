@@ -3,9 +3,9 @@
  */
 
 import { h, replaceChildren } from '../dom.js';
-import { api, cachedGet } from '../api.js';
-import { isCurrent } from '../router.js';
-import { currentAccount } from '../store.js';
+import { api, cachedGet, invalidate } from '../api.js';
+import { isCurrent, navigate } from '../router.js';
+import { currentAccount, refreshAccount } from '../store.js';
 import {
   emptyState,
   formatDateTime,
@@ -130,7 +130,7 @@ export async function renderStudentDashboard(container, route) {
  * Renders the attendance history of the signed in student.
  */
 export async function renderStudentAttendance(container, route) {
-  const rows = await api.get('/student/attendance');
+  const rows = await cachedGet('/student/attendance');
   if (!isCurrent(container, route)) {
     return;
   }
@@ -202,7 +202,7 @@ export async function renderStudentTimetable(container, route) {
  * the server records the attendance.
  */
 export async function renderVerifyPresence(container, route) {
-  const sessions = await api.get('/student/sessions/active');
+  const sessions = await cachedGet('/student/sessions/active');
   if (!isCurrent(container, route)) {
     return;
   }
@@ -261,6 +261,9 @@ export async function renderVerifyPresence(container, route) {
         }
         if (submission.outcome === 'RECORDED') {
           toast('Your attendance has been recorded.', 'success');
+          // The history and the dashboard changed, so they are read again.
+          invalidate('/student/attendance');
+          invalidate('/student/dashboard');
           replaceChildren(result, h('div.card.card-pad.stack.stack-4', [
             h('div.alert.alert-success', [
               h('div.stack.stack-2', [
@@ -350,7 +353,7 @@ export async function renderVerifyPresence(container, route) {
  * Renders the page that explains and controls the biometric data.
  */
 export async function renderBiometricSettings(container, route) {
-  const status = await api.get('/student/biometric/status');
+  const status = await cachedGet('/student/biometric/status');
   if (!isCurrent(container, route)) {
     return;
   }
@@ -362,9 +365,11 @@ export async function renderBiometricSettings(container, route) {
         h('p.lead', 'What is stored about your face, and how to remove it.')
       ])
     ]),
-    biometricPanel(status, () => {
+    biometricPanel(status, async () => {
       toast('Your biometric data has been removed.', 'success');
-      window.location.hash = '#/verify-identity';
+      // The account changed, so it is read again before the next screen is opened.
+      await refreshAccount();
+      navigate('/verify-identity');
     })
   ]));
 }

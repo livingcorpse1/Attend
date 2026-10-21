@@ -92,6 +92,10 @@ export function createCalendar({ slots, onSlotClick }) {
       ? `${first.toLocaleDateString(undefined, { month: 'long' })} ${first.getDate()} – ${last.getDate()}, ${last.getFullYear()}`
       : `${first.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} – ${last.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}`;
 
+    // The grid is emptied first. Without this every arrow click would leave the
+    // previous fortnight behind and the rows would pile up.
+    grid.replaceChildren();
+
     const today = new Date();
     for (let day = MONDAY; day <= SUNDAY; day += 1) {
       grid.append(h('div.calendar-head', weekdayShort(day)));

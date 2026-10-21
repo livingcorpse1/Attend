@@ -7,7 +7,7 @@
 
 import { h, replaceChildren } from './dom.js';
 import { api, prefetch } from './api.js';
-import { applyTheme, currentAccount, institution, setState, toggleTheme } from './store.js';
+import { applyTheme, currentAccount, institution, refreshAccount, setState, toggleTheme } from './store.js';
 import {
   isCurrent,
   navigate,
@@ -122,7 +122,15 @@ async function boot() {
 }
 
 /**
- * Registers every route of the application.
+ * Refreshes the account and then goes to the dashboard.
+ */
+async function refreshAccountThenGoHome() {
+  await refreshAccount();
+  navigate('/dashboard');
+}
+
+/**
+ * Gives the navigation to the router.
  */
 function registerRoutes() {
   route('/login', () => renderAuthView('login'));
@@ -166,7 +174,7 @@ function registerRoutes() {
   });
 
   route('/verify-identity', async ({ container, route }) => {
-    await renderVerification(container, route, { onVerified: () => navigate('/dashboard') });
+    await renderVerification(container, route, { onVerified: refreshAccountThenGoHome });
   });
 
   route('/reports', async ({ container, route }) => {
