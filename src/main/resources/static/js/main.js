@@ -7,7 +7,7 @@
 
 import { h, replaceChildren } from './dom.js';
 import { api, prefetch } from './api.js';
-import { applyTheme, currentAccount, institution, refreshAccount, setState, toggleTheme } from './store.js';
+import { applyTheme, currentAccount, institution, setState, toggleTheme } from './store.js';
 import {
   isCurrent,
   navigate,
@@ -19,14 +19,13 @@ import {
 } from './router.js';
 import { toast, viewSkeleton } from './ui.js';
 import { renderLogin, renderSignup } from './views/auth.js';
-import { renderVerification } from './views/verify.js';
 import {
-  renderBiometricSettings,
   renderStudentAttendance,
   renderStudentDashboard,
   renderStudentTimetable,
   renderVerifyPresence
 } from './views/student.js';
+import { renderProfile } from './views/profile.js';
 import {
   renderFacultyAttendance,
   renderFacultyDashboard,
@@ -44,14 +43,15 @@ const NAVIGATION = {
     { path: '/verify-presence', label: 'Verify presence', glyph: '◎' },
     { path: '/attendance', label: 'My attendance', glyph: '◷' },
     { path: '/timetable', label: 'Timetable', glyph: '▤' },
-    { path: '/biometric', label: 'Biometric data', glyph: '☺' }
+    { path: '/profile', label: 'Profile', glyph: '☺' }
   ],
   FACULTY: [
     { path: '/dashboard', label: 'Dashboard', glyph: '⌂' },
     { path: '/attendance', label: 'Take attendance', glyph: '◎' },
     { path: '/classes', label: 'My classes', glyph: '▤' },
     { path: '/timetable', label: 'Timetable', glyph: '▥' },
-    { path: '/reports', label: 'Reports', glyph: '▥' }
+    { path: '/reports', label: 'Reports', glyph: '▥' },
+    { path: '/profile', label: 'Profile', glyph: '☺' }
   ]
 };
 
@@ -61,13 +61,12 @@ const PAGE_TITLES = {
   '/attendance': 'Attendance',
   '/timetable': 'Timetable',
   '/verify-presence': 'Verify presence',
-  '/biometric': 'Biometric data',
+  '/profile': 'Profile',
   '/reports': 'Reports',
   '/users': 'Accounts',
   '/classes': 'Subjects',
   '/settings': 'Settings',
-  '/audit': 'Audit trail',
-  '/verify-identity': 'Identity check'
+  '/audit': 'Audit trail'
 };
 
 /** The API call each screen needs, so it can be fetched before the screen is opened. */
@@ -77,14 +76,15 @@ const PREFETCH_BY_ROLE = {
     '/attendance': '/faculty/classes',
     '/classes': '/faculty/structure',
     '/timetable': '/faculty/timetable',
-    '/reports': '/faculty/reports/subjects'
+    '/reports': '/faculty/reports/subjects',
+    '/profile': '/faculty/structure'
   },
   STUDENT: {
     '/dashboard': '/student/dashboard',
     '/attendance': '/student/attendance',
     '/timetable': '/student/timetable',
     '/verify-presence': '/student/sessions/active',
-    '/biometric': '/student/biometric/status'
+    '/profile': '/student/biometric/status'
   }
 };
 
@@ -109,14 +109,6 @@ async function boot() {
 
   startRouter();
   registerServiceWorker();
-}
-
-/**
- * Refreshes the account and then goes to the dashboard.
- */
-async function refreshAccountThenGoHome() {
-  await refreshAccount();
-  navigate('/dashboard');
 }
 
 /**
@@ -157,12 +149,17 @@ function registerRoutes() {
     await renderVerifyPresence(container, route);
   });
 
-  route('/biometric', async ({ container, route }) => {
-    await renderBiometricSettings(container, route);
+  route('/profile', async ({ container, route }) => {
+    await renderProfile(container, route);
   });
 
-  route('/verify-identity', async ({ container, route }) => {
-    await renderVerification(container, route, { onVerified: refreshAccountThenGoHome });
+  // The identity check and the biometric data live in the profile now.
+  route('/verify-identity', () => {
+    navigate('/profile', { replace: true });
+  });
+
+  route('/biometric', () => {
+    navigate('/profile', { replace: true });
   });
 
   route('/reports', async ({ container, route }) => {
@@ -201,9 +198,9 @@ function registerRoutes() {
       navigate('/dashboard', { replace: true });
       return false;
     }
-    if (account.role === 'STUDENT' && account.faceState !== 'VERIFIED'
-      && path !== '/verify-identity' && path !== '/biometric') {
-      navigate('/verify-identity', { replace: true });
+    if (account.role === 'STUDENT' && account.faceState !== 'VERIFIED' && path !== '/profile') {
+      // The identity check is part of the profile, so that is where the student goes.
+      navigate('/profile', { replace: true });
       return false;
     }
     return true;
@@ -219,7 +216,7 @@ async function renderAuthView(mode) {
     const bootstrap = await api.get('/auth/session');
     setState({ account: bootstrap.account, institution: bootstrap.institution || institution() });
     const account = currentAccount();
-    navigate(account.role === 'STUDENT' && account.faceState !== 'VERIFIED' ? '/verify-identity' : '/dashboard');
+    navigate(account.role === 'STUDENT' && account.faceState !== 'VERIFIED' ? '/profile' : '/dashboard');
   };
   if (mode === 'signup') {
     await renderSignup(root, afterAuth);

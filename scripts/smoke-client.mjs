@@ -218,7 +218,19 @@ async function buildAcademicStructure() {
     await fetch('/api/faculty/enrollments?email=student@veriqra.local&classId=' + classSection.id,
       { method: 'POST', headers });
 
-    return { classId: classSection.id, subjectId: subject.id };
+    // A lecture for today, so the attendance screen has something to show. The teacher
+    // only has a lecture on Monday, and the screen lists the lectures of the day.
+    const today = new Date().getDay() === 0 ? 7 : new Date().getDay();
+    const lectures = await (await fetch('/api/faculty/timetable', { headers })).json();
+    let lecture = lectures.find((entry) => entry.classId === classSection.id && entry.dayOfWeek === today);
+    if (!lecture) {
+      lecture = await (await fetch('/api/faculty/timetable', {
+        method: 'POST', headers,
+        body: JSON.stringify({ classId: classSection.id, dayOfWeek: today, starts: '15:00', ends: '16:00' })
+      })).json();
+    }
+
+    return { classId: classSection.id, subjectId: subject.id, slotId: lecture.id };
   })()`);
 
   if (!ids || !ids.classId) {
@@ -238,6 +250,9 @@ async function removeAcademicStructure(ids) {
   await evaluate(`(async () => {
     const bootstrap = await (await fetch('/api/auth/session')).json();
     const headers = { 'Content-Type': 'application/json', 'X-XSRF-TOKEN': bootstrap.csrfToken };
+    if (${ids.slotId || 'null'}) {
+      await fetch('/api/faculty/timetable/' + ${ids.slotId}, { method: 'DELETE', headers });
+    }
     await fetch('/api/faculty/classes/' + ${ids.classId}, { method: 'DELETE', headers });
     await fetch('/api/faculty/subjects/' + ${ids.subjectId}, { method: 'DELETE', headers });
   })()`);
@@ -296,14 +311,26 @@ async function run() {
     await evaluate('document.querySelectorAll(".calendar .calendar-head").length === 7'));
 
   await evaluate('location.hash = "#/attendance"');
-  await waitFor('document.querySelector("#class-choice") !== null', 'the live attendance screen');
+  await waitFor('document.querySelector(".lecture-row") !== null', 'the lectures of the day');
   check('the live attendance screen renders',
-    await evaluate('document.querySelector("#class-choice") !== null'));
+    await evaluate('document.querySelector("#view .card") !== null'));
+  check('the attendance screen lists the lectures of the day',
+    await evaluate('document.querySelectorAll(".lecture-row").length >= 1'));
+  check('the attendance screen offers a button for the lecture',
+    await evaluate('document.querySelector(".lecture-row .button") !== null'));
 
   await evaluate('location.hash = "#/timetable"');
   await waitFor('document.querySelector(".scheduler-cell") !== null', 'the teacher timetable');
   check('the teacher timetable renders the week grid',
     await evaluate('document.querySelectorAll(".scheduler-cell").length === 7'));
+
+  // The profile of the teacher.
+  await evaluate('location.hash = "#/profile"');
+  await waitFor('document.body.innerText.includes("Your details")', 'the teacher profile');
+  check('the teacher profile shows the account details',
+    await evaluate('document.body.innerText.includes("Your details")'));
+  check('the teacher profile lists the subjects they teach',
+    await evaluate('document.body.innerText.includes("Your subjects")'));
 
   // The student workspace.
   await signIn('student@veriqra.local', DEMO_PASSWORD);
@@ -312,15 +339,14 @@ async function run() {
   check('the student shell renders',
     await evaluate('document.querySelector(".sidebar .brand span:last-child") !== null'));
 
-  await evaluate('location.hash = "#/verify-identity"');
-  await waitFor('document.querySelector(".verify-steps") !== null', 'the identity check screen');
-  check('the identity check screen renders', await evaluate('document.querySelector(".verify-steps") !== null'));
-  check('the identity check explains the liveness challenge',
+  await evaluate('location.hash = "#/profile"');
+  await waitFor('document.querySelector(".verify-steps") !== null', 'the profile of the student');
+  check('the student profile holds the identity check',
+    await evaluate('document.querySelector(".verify-steps") !== null'));
+  check('the student profile explains the liveness challenge',
     await evaluate('document.body.innerText.includes("camera")'));
-
-  await evaluate('location.hash = "#/biometric"');
-  await waitFor('document.querySelector("#view .card") !== null', 'the biometric screen');
-  check('the biometric screen renders', await evaluate('document.querySelector("#view") !== null'));
+  check('the student profile shows the biometric data',
+    await evaluate('document.body.innerText.includes("Biometric data")'));
 
   // The student workspace has to be as quick as the teacher one.
   await evaluate('location.hash = "#/dashboard"');

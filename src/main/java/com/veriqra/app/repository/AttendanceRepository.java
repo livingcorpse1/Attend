@@ -204,6 +204,8 @@ public class AttendanceRepository {
     }
 
     public List<SessionRow> sessionsForFaculty(long facultyId, SessionStatus status, int limit) {
+        // A session whose time is up is never shown as running.
+        expireStaleSessions(Instant.now());
         if (status == null) {
             return db.query("select * from attendance_session where faculty_id = ? order by started_at desc limit ?",
                     SESSION_MAPPER, facultyId, limit);
@@ -224,6 +226,15 @@ public class AttendanceRepository {
     public List<SessionRow> sessionsForClass(long classId) {
         return db.query("select * from attendance_session where class_id = ? order by started_at desc",
                 SESSION_MAPPER, classId);
+    }
+
+    /** How many attendance records were written in a class section. */
+    public int recordsForClass(long classId) {
+        return db.queryForObject("""
+                select count(*) from attendance_record r
+                  join attendance_session s on s.id = r.session_id
+                 where s.class_id = ?
+                """, Integer.class, classId);
     }
 
     /** Active sessions for the classes a student is enrolled in. */

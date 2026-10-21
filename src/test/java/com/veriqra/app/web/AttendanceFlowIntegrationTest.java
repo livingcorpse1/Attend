@@ -194,8 +194,8 @@ class AttendanceFlowIntegrationTest {
 
     @Test
     void aTeacherCannotOpenTheSessionOfAnotherTeacher() throws Exception {
-        String colleaguePassword = TestFixtures.addTeacher(mvc, facultySession, "faculty2@veriqra.local", "Prof. Anand Iyer");
-        MockHttpSession other = login("faculty2@veriqra.local", colleaguePassword);
+        String colleaguePassword = TestFixtures.addTeacher(mvc, facultySession, "colleague@veriqra.local", "Prof. Anand Iyer");
+        MockHttpSession other = login("colleague@veriqra.local", colleaguePassword);
         long session = startSession();
 
         mvc.perform(get("/api/faculty/sessions/" + session + "/roster").session(other))
@@ -279,9 +279,9 @@ class AttendanceFlowIntegrationTest {
     @Test
     void aTeacherCannotTakeTheAttendanceOfALectureThatIsNotOnTheirDiary() throws Exception {
         // A colleague owns the other lecture.
-        String colleaguePassword = TestFixtures.addTeacher(mvc, facultySession, "faculty2@veriqra.local",
+        String colleaguePassword = TestFixtures.addTeacher(mvc, facultySession, "colleague@veriqra.local",
                 "Prof. Anand Iyer");
-        MockHttpSession colleague = login("faculty2@veriqra.local", colleaguePassword);
+        MockHttpSession colleague = login("colleague@veriqra.local", colleaguePassword);
         long colleagueSubject = TestFixtures.createSubject(mvc, colleague, "AT102", "Colleague Subject");
         long colleagueClass = TestFixtures.createClass(mvc, colleague, colleagueSubject, "A", "Room 2");
         long colleagueSlot = TestFixtures.addLectureToday(mvc, colleague, colleagueClass);

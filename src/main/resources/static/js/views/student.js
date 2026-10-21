@@ -4,8 +4,8 @@
 
 import { h, replaceChildren } from '../dom.js';
 import { api, cachedGet, invalidate } from '../api.js';
-import { isCurrent, navigate } from '../router.js';
-import { currentAccount, refreshAccount } from '../store.js';
+import { isCurrent } from '../router.js';
+import { currentAccount } from '../store.js';
 import {
   emptyState,
   formatDateTime,
@@ -17,7 +17,7 @@ import {
   toast
 } from '../ui.js';
 import { scannerPanel } from '../qr.js';
-import { runLivenessCapture, biometricPanel } from './verify.js';
+import { runLivenessCapture } from './verify.js';
 import { createScheduler } from '../calendar.js';
 
 /* -------------------------------------------------------------------------- */
@@ -101,6 +101,12 @@ export async function renderStudentDashboard(container, route) {
         h('a.button.button-primary.button-lg', { href: '#/verify-presence' }, 'Mark my attendance →')
       ]),
       stats,
+      data.biometricState === 'VERIFIED' ? null : h('div.alert.alert-warning', [
+        h('div.row.between.wrap.gap-3', [
+          h('span', 'Your identity check is still open. Until it is done you cannot mark attendance.'),
+          h('a.button.button-primary.button-sm', { href: '#/profile' }, 'Open your profile')
+        ])
+      ]),
       h('div.split-wide', [
         h('div.card', [
           h('div.card-header', [h('h3', 'Attendance by subject')]),
@@ -314,34 +320,7 @@ export async function renderVerifyPresence(container, route) {
 }
 
 /* -------------------------------------------------------------------------- */
-/* Biometric settings                                                          */
-/* -------------------------------------------------------------------------- */
-
-/**
- * Renders the page that explains and controls the biometric data.
- */
-export async function renderBiometricSettings(container, route) {
-  const status = await cachedGet('/student/biometric/status');
-  if (!isCurrent(container, route)) {
-    return;
-  }
-
-  container.replaceChildren(h('div.stack.stack-6', [
-    h('div.page-head', [
-      h('div', [
-        h('h1', 'Biometric data'),
-        h('p.lead', 'What is stored about your face, and how to remove it.')
-      ])
-    ]),
-    biometricPanel(status, async () => {
-      toast('Your biometric data has been removed.', 'success');
-      // The account changed, so it is read again before the next screen is opened.
-      await refreshAccount();
-      navigate('/verify-identity');
-    })
-  ]));
-}
-
+/* Helpers                                                                      */
 /* -------------------------------------------------------------------------- */
 
 function firstName(fullName) {

@@ -55,8 +55,8 @@ class TimetableIntegrationTest {
 
         // There is no administrator. The first teacher adds a colleague, and that
         // colleague becomes the owner of the lecture that must not be touched.
-        String colleaguePassword = TestFixtures.addTeacher(mvc, faculty, "faculty2@veriqra.local", "Prof. Anand Iyer");
-        otherFaculty = login("faculty2@veriqra.local", colleaguePassword);
+        String colleaguePassword = TestFixtures.addTeacher(mvc, faculty, "colleague@veriqra.local", "Prof. Anand Iyer");
+        otherFaculty = login("colleague@veriqra.local", colleaguePassword);
 
         long ownSubject = TestFixtures.createSubject(mvc, faculty, "TS101", "Own Subject");
         long otherSubject = TestFixtures.createSubject(mvc, otherFaculty, "TS102", "Other Subject");

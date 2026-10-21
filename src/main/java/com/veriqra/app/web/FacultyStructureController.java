@@ -199,6 +199,12 @@ public class FacultyStructureController {
             throw ApiException.forbidden("NOT_ASSIGNED",
                     "You can only create class sections for your own subjects.");
         }
+        boolean exists = academic.listClassesForFaculty(facultyId).stream()
+                .anyMatch(view -> view.subjectId() == subjectId && section.equalsIgnoreCase(view.section()));
+        if (exists) {
+            throw ApiException.conflict("CLASS_EXISTS",
+                    "There is already a class section with that name for this subject.");
+        }
         long id = academic.createClass(subjectId, section, room);
         audit.record(facultyId, "CLASS_CREATED", "class=" + id, "TEACHER_ACTION",
                 "Class section created", null, section);

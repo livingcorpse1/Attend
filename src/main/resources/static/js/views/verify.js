@@ -8,7 +8,6 @@
 
 import { h, replaceChildren } from '../dom.js';
 import { api } from '../api.js';
-import { isCurrent } from '../router.js';
 import { toast } from '../ui.js';
 import { cameraPanel, openCamera, captureSequence, framesToForm } from '../camera.js';
 
@@ -101,25 +100,26 @@ export async function runLivenessCapture({ panel, challenge, submit, onFinished 
 }
 
 /**
- * Renders the identity check page.
+ * Renders the identity check as a part of the profile.
  *
- * @param {HTMLElement} container
+ * <p>The check is not a screen of its own any more. It lives in the profile of the
+ * student, where the account details and the camera check stand side by side.
+ *
+ * @param {object} status The biometric status of the student.
  * @param {object} options
- * @param {(account: object) => void} options.onVerified Called once the check succeeded.
+ * @param {HTMLElement} options.container The view container, so the camera is released
+ *        when the student leaves the profile.
+ * @param {(account: object) => void} [options.onVerified] Called once the check succeeded.
+ * @returns {HTMLElement} The section.
  */
-export async function renderVerification(container, route, { onVerified }) {
-  const status = await api.get('/student/biometric/status');
-  if (!isCurrent(container, route)) {
-    return;
-  }
-  const panel = h('div.card.card-pad.stack.stack-4', h('div.empty-state', [
-    h('div.glyph', '☺'),
-    h('p', 'The camera preview appears here once the check starts.'),
-    h('p.text-sm.text-subtle', 'Nothing is recorded. Only the frames needed for the check are sent to the server.')
-  ]));
+export function identityCheckSection(status, { container, onVerified }) {
+  const panel = h('div.stack.stack-3');
   const intro = h('div.stack.stack-2');
+  const startButton = h('button.button.button-primary', { type: 'button' },
+    status.state === 'VERIFIED' ? 'Run the check again' : 'Start the identity check');
 
   const start = async () => {
+    startButton.disabled = true;
     try {
       const challenge = await api.post('/student/biometric/challenge', {});
       replaceChildren(intro, h('div.alert.alert-info', [
@@ -128,7 +128,7 @@ export async function renderVerification(container, route, { onVerified }) {
           h('span', challenge.guidance)
         ])
       ]));
-      await runLivenessCapture({
+      const capture = await runLivenessCapture({
         panel,
         challenge,
         submit: async (frames) => {
@@ -138,29 +138,34 @@ export async function renderVerification(container, route, { onVerified }) {
         onFinished: async (result) => {
           if (result && result.enrolled) {
             toast('Your face is verified. Welcome to VeriQra.', 'success');
-            await onVerified();
+            await onVerified?.();
           } else if (result) {
             replaceChildren(intro, h('div.alert.alert-warning', result.message));
             startButton.disabled = false;
             startButton.textContent = 'Try the check again';
           }
         }
-      }).then((capture) => {
-        // Leaving the screen releases the camera.
-        container.dispose = () => capture?.stop?.();
       });
+      // Leaving the profile releases the camera.
+      if (container) {
+        container.dispose = () => capture?.stop?.();
+      }
     } catch (failure) {
       replaceChildren(intro, h('div.alert.alert-error', failure.message));
+      startButton.disabled = false;
     }
   };
 
-  const startButton = h('button.button.button-primary.button-lg', { type: 'button', onClick: start },
-    status.state === 'VERIFIED' ? 'Re-run the identity check' : 'Start the identity check');
+  startButton.onclick = start;
 
   replaceChildren(intro, [
     h('p.eyebrow', 'Identity check'),
-    h('h1', 'Let us confirm it is really you'),
-    h('p.lead', 'This runs once. It takes about ten seconds and needs your camera.')
+    h('h3', status.state === 'VERIFIED'
+      ? 'Your face is verified'
+      : 'Let us confirm it is really you'),
+    h('p.text-sm.text-muted', status.state === 'VERIFIED'
+      ? 'You can mark your attendance. Run the check again if your face has changed.'
+      : 'This runs once. It takes about ten seconds and needs your camera.')
   ]);
 
   const steps = h('div.verify-steps', [
@@ -169,29 +174,21 @@ export async function renderVerification(container, route, { onVerified }) {
     step(3, 'Done', 'A template of your face is stored. Your photographs are not.')
   ]);
 
-  container.replaceChildren(h('div.stack.stack-6', [
-    h('div.page-head', [
-      h('div', [h('h1', 'Identity check'), h('p.lead', 'Required once before you can mark attendance.')]),
-      startButton
-    ]),
-    h('div.split-wide', [
-      h('div.card.card-pad.stack.stack-5', [intro, steps]),
-      h('div.card.card-pad.stack.stack-4', [
-        h('h3', 'Camera'),
-        panel,
-        h('div.alert.alert-warning', [
-          h('span', 'Your face template can be removed at any time from the Verify page. '
-            + 'Removing it stops you from marking attendance until you run the check again.')
-        ])
-      ])
-    ])
-  ]));
-
   if (!status.available) {
     replaceChildren(intro, h('div.alert.alert-error', status.unavailableReason
       || 'The server cannot run the face check right now.'));
     startButton.disabled = true;
   }
+
+  return h('div.stack.stack-4', [
+    intro,
+    h('div.row.between.wrap.gap-3', [
+      h('span.text-sm.text-muted', 'Only the frames needed for the check are sent to the server.'),
+      startButton
+    ]),
+    panel,
+    steps
+  ]);
 }
 
 function step(index, title, text) {

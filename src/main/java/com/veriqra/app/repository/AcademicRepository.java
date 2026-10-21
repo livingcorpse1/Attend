@@ -263,7 +263,7 @@ public class AcademicRepository {
                  where t.day_of_week = ?
                    and (t.faculty_id = ? or t.class_id = ?)
                    and t.starts < ? and t.ends > ?
-                   and (? is null or t.id <> ?)
+                   and (cast(? as bigint) is null or t.id <> cast(? as bigint))
                 """, TIMETABLE_MAPPER, dayOfWeek, facultyId, classId,
                 Time.valueOf(ends), Time.valueOf(starts), excludeId, excludeId);
     }

@@ -178,6 +178,7 @@ public final class AttendanceDtos {
     /** A class section the teacher owns. */
     public record ClassView(
             long id,
+            long subjectId,
             String subjectCode,
             String subjectName,
             String section,

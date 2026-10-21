@@ -111,8 +111,8 @@ public class FacultyController {
     @GetMapping("/classes")
     public List<ClassView> classes(Authentication authentication) {
         return academic.listClassesForFaculty(currentAccount.id(authentication)).stream()
-                .map(view -> new ClassView(view.id(), view.subjectCode(), view.subjectName(), view.section(),
-                        view.room(), view.enrolled()))
+                .map(view -> new ClassView(view.id(), view.subjectId(), view.subjectCode(), view.subjectName(),
+                        view.section(), view.room(), view.enrolled()))
                 .toList();
     }
 

@@ -118,7 +118,7 @@ function demoHint() {
   }
   return h('div.demo-note', [
     h('strong', 'Demonstration accounts'),
-    h('div', { style: { marginTop: '0.25rem' } }, accounts.join('  ·  '))
+    h('div.demo-accounts', accounts.map((entry) => h('span.demo-account', entry)))
   ]);
 }
 
