@@ -47,6 +47,104 @@ public class TimetableService {
         return parseTime(properties.getTeachingDay().getEnds(), "teaching day end");
     }
 
+    /**
+     * The lectures of the teacher on a weekday, with a note of whether attendance may
+     * be taken for them right now.
+     */
+    public List<ScheduleEntry> schedule(long facultyId, int dayOfWeek) {
+        return academic.timetableForFacultyOnDay(facultyId, dayOfWeek).stream()
+                .map(slot -> new ScheduleEntry(
+                        slot.id(),
+                        slot.classId(),
+                        slot.subjectCode(),
+                        slot.subjectName(),
+                        slot.section(),
+                        slot.room(),
+                        slot.dayOfWeek(),
+                        slot.starts().toString(),
+                        slot.ends().toString(),
+                        canTakeAttendanceNow(slot),
+                        reasonIfNot(slot)))
+                .toList();
+    }
+
+    /**
+     * The lectures of the teacher today.
+     */
+    public List<ScheduleEntry> scheduleToday(long facultyId) {
+        int today = java.time.LocalDate.now().getDayOfWeek().getValue();
+        return schedule(facultyId, today);
+    }
+
+    /**
+     * A lecture of the teacher, when attendance may be taken for it right now.
+     *
+     * @throws ApiException when the lecture does not exist, is not the teacher's, or is
+     *                      outside the window in which attendance may be taken
+     */
+    public AcademicRepository.TimetableSlot requireOpenSlot(long facultyId, long slotId) {
+        AcademicRepository.TimetableSlot slot = academic.findTimetableSlot(slotId)
+                .orElseThrow(() -> ApiException.notFound("SLOT_NOT_FOUND", "That lecture is not on your timetable."));
+        if (slot.facultyId() == null || slot.facultyId() != facultyId) {
+            throw ApiException.forbidden("NOT_OWNER", "That lecture is on the timetable of another teacher.");
+        }
+        if (!canTakeAttendanceNow(slot)) {
+            throw ApiException.conflict("SLOT_NOT_OPEN", reasonIfNot(slot));
+        }
+        return slot;
+    }
+
+    /**
+     * True when attendance may be taken for the lecture.
+     */
+    private boolean canTakeAttendanceNow(AcademicRepository.TimetableSlot slot) {
+        return reasonIfNot(slot) == null;
+    }
+
+    /**
+     * Why attendance may not be taken for the lecture, or null when it may.
+     */
+    private String reasonIfNot(AcademicRepository.TimetableSlot slot) {
+        java.time.LocalDate today = java.time.LocalDate.now();
+        if (slot.dayOfWeek() != today.getDayOfWeek().getValue()) {
+            return "That lecture is on another day. Attendance is only taken on the day of the lecture.";
+        }
+        // The window is worked out on the full date, so a lecture that runs across
+        // midnight is still measured correctly.
+        java.time.LocalDateTime starts = today.atTime(slot.starts());
+        java.time.LocalDateTime ends = today.atTime(slot.ends());
+        if (ends.isBefore(starts)) {
+            ends = ends.plusDays(1);
+        }
+        java.time.LocalDateTime now = java.time.LocalDateTime.now();
+        java.time.LocalDateTime opens = starts.minusMinutes(properties.getAttendance().getOpenBeforeMinutes());
+        java.time.LocalDateTime closes = ends.plusMinutes(properties.getAttendance().getOpenAfterMinutes());
+        if (now.isBefore(opens)) {
+            return "That lecture starts at " + slot.starts() + ". Attendance opens "
+                    + properties.getAttendance().getOpenBeforeMinutes() + " minutes before it.";
+        }
+        if (now.isAfter(closes)) {
+            return "That lecture ended at " + slot.ends() + ". The window for taking its attendance closed "
+                    + properties.getAttendance().getOpenAfterMinutes() + " minutes later.";
+        }
+        return null;
+    }
+
+    /** One lecture of the teaching diary. */
+    public record ScheduleEntry(
+            long id,
+            long classId,
+            String subjectCode,
+            String subjectName,
+            String section,
+            String room,
+            int dayOfWeek,
+            String starts,
+            String ends,
+            boolean open,
+            String message) {
+    }
+
     /** The slots of one teacher, ordered by weekday and start time. */
     public List<TimetableView> list(long facultyId) {
         return academic.timetableForFaculty(facultyId).stream()

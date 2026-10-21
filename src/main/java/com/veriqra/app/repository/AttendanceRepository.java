@@ -146,11 +146,18 @@ public class AttendanceRepository {
 
     public long insertSession(long classId, long facultyId, Instant startedAt, Instant endsAt,
                               String sessionNonce, String title) {
+        return insertSession(classId, facultyId, startedAt, endsAt, sessionNonce, title, null);
+    }
+
+    /** Inserts a new attendance session for a lecture of the teaching diary. */
+    public long insertSession(long classId, long facultyId, Instant startedAt, Instant endsAt,
+                              String sessionNonce, String title, Long timetableSlotId) {
         var keys = new org.springframework.jdbc.support.GeneratedKeyHolder();
         db.update(connection -> {
             var statement = connection.prepareStatement("""
-                    insert into attendance_session(class_id, faculty_id, started_at, ends_at, status, session_nonce, title)
-                    values(?,?,?,?,'ACTIVE',?,?)
+                    insert into attendance_session(class_id, faculty_id, started_at, ends_at, status,
+                                                   session_nonce, title, timetable_slot_id)
+                    values(?,?,?,?,'ACTIVE',?,?,?)
                     """, new String[]{"id"});
             statement.setLong(1, classId);
             statement.setLong(2, facultyId);
@@ -158,6 +165,11 @@ public class AttendanceRepository {
             statement.setTimestamp(4, Timestamp.from(endsAt));
             statement.setString(5, sessionNonce);
             statement.setString(6, title);
+            if (timetableSlotId == null) {
+                statement.setNull(7, java.sql.Types.BIGINT);
+            } else {
+                statement.setLong(7, timetableSlotId);
+            }
             return statement;
         }, keys);
         return keys.getKey().longValue();

@@ -154,10 +154,6 @@ export async function renderStudentAttendance(container, route) {
       h('div', [
         h('h1', 'My attendance'),
         h('p.lead', 'Every record that was created for your account, newest first.')
-      ]),
-      h('div.row.gap-2', [
-        h('a.button.button-secondary', { href: '/api/student/attendance/export.csv', download: '' }, 'Export CSV'),
-        h('a.button.button-secondary', { href: '/api/student/attendance/export.pdf', download: '' }, 'Export PDF')
       ])
     ]),
     h('div.card', [h('div.card-body card-body-flush', historyTable)])
@@ -211,12 +207,6 @@ export async function renderVerifyPresence(container, route) {
   const panel = h('div.card.card-pad.stack.stack-4');
   const scanner = scannerPanel();
 
-  const manualInput = h('input.input', {
-    type: 'text',
-    placeholder: 'Or paste the code payload',
-    'aria-label': 'QR payload'
-  });
-
   const begin = async (token) => {
     replaceChildren(result);
     let ticket;
@@ -241,7 +231,7 @@ export async function renderVerifyPresence(container, route) {
       ])
     ]));
 
-    await runLivenessCapture({
+    const capture = await runLivenessCapture({
       panel: result.querySelector('#capture-panel'),
       challenge: {
         challengeId: ticket.challengeId,
@@ -279,18 +269,9 @@ export async function renderVerifyPresence(container, route) {
         }
       }
     });
-  };
 
-  const startButton = h('button.button.button-primary', { type: 'button' }, 'Start the camera scanner');
-  startButton.onclick = async () => {
-    startButton.disabled = true;
-    try {
-      await scanner.start();
-      scanner.panel.replaceChildren(scanner.video, scanner.status, scanner.canvas);
-    } catch (failure) {
-      replaceChildren(result, h('div.alert.alert-error', failure.message));
-      startButton.disabled = false;
-    }
+    // Leaving the screen releases the camera.
+    container.dispose = () => capture?.stop?.();
   };
 
   const onQr = async (event) => {
@@ -303,20 +284,7 @@ export async function renderVerifyPresence(container, route) {
     h('div.card-header', [h('h3', 'Step 1 · Scan the classroom code')]),
     h('div.card-body.stack.stack-4', [
       h('p.text-sm.text-muted', 'The code your teacher is showing changes every second and stops working within seconds of being captured. Aim the camera at the screen.'),
-      startButton,
-      h('div.stack.stack-2', [
-        h('label', { for: 'manual-token' }, 'Manual entry'),
-        manualInput,
-        h('button.button.button-secondary', {
-          type: 'button',
-          onClick: () => {
-            const value = manualInput.value.trim();
-            if (value) {
-              begin(value);
-            }
-          }
-        }, 'Use this code')
-      ])
+      scanner.panel
     ])
   ]);
 

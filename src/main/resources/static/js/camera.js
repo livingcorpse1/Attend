@@ -119,17 +119,17 @@ function waitForMetadata(video) {
 
 /**
  * Builds the camera panel used by the verification screens.
+ *
+ * <p>The panel shows the camera inside a frame and carries a button that releases it
+ * again, so the camera light always goes out when the student is finished.
  */
 export function cameraPanel() {
   const video = h('video', { playsinline: '', muted: '', autoplay: '' });
   const reticle = h('div.reticle');
-  const caption = h('div.caption', 'Camera is off');
-  const frame = h('div.camera-frame', [
-    video,
-    h('div.overlay', reticle),
-    caption
-  ]);
-  return { frame, video, reticle, caption };
+  const caption = h('div.caption', 'The camera is off');
+  const frame = h('div.camera-frame', [video, h('div.overlay', reticle), caption]);
+  const stopButton = h('button.button.button-secondary', { type: 'button', disabled: true }, 'Stop the camera');
+  return { frame, video, reticle, caption, stopButton };
 }
 
 /**

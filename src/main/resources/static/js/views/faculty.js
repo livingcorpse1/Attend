@@ -103,74 +103,79 @@ export async function renderFacultyDashboard(container, route) {
 
 /**
  * Renders the live attendance screen.
+ *
+ * <p>Attendance is only taken for a lecture that is on the teaching diary of the day.
+ * The screen therefore lists the lectures of the day and offers to start only those
+ * that are running.
  */
 export async function renderFacultyAttendance(container, route) {
-  const classes = await cachedGet('/faculty/classes');
-  const sessions = await cachedGet('/faculty/sessions', { params: { status: 'ACTIVE' } });
+  const [lectures, sessions] = await Promise.all([
+    cachedGet('/faculty/schedule'),
+    cachedGet('/faculty/sessions', { params: { status: 'ACTIVE' } })
+  ]);
   if (!isCurrent(container, route)) {
     return;
   }
 
-  if (classes.length === 0) {
-    container.replaceChildren(h('div.card.card-pad', emptyState(
-      'You are not assigned to any class yet. An administrator has to add you to a subject first.', '▤')));
-    return;
-  }
-
-  const select = h('select.select#class-choice', { 'aria-label': 'Class section' },
-    classes.map((view) => h('option', { value: String(view.id) },
-      `${view.subjectCode} · ${view.section} · ${view.room} (${view.enrolled} students)`)));
-
-  const titleInput = h('input.input', {
-    type: 'text',
-    maxLength: 160,
-    placeholder: 'Optional title, e.g. Unit 3 lecture',
-    'aria-label': 'Session title'
-  });
-
-  const startButton = h('button.button.button-primary#start', { type: 'button' }, 'Start attendance session');
   const sessionArea = h('div');
 
   const resume = async (session) => {
     renderSession(session);
   };
 
-  startButton.onclick = async () => {
-    startButton.disabled = true;
+  /**
+   * Starts the attendance session of a lecture.
+   */
+  const start = async (lecture, button) => {
+    button.disabled = true;
     try {
-      const session = await api.post('/faculty/sessions', {
-        classId: Number(select.value),
-        title: titleInput.value.trim() || null
-      });
+      const session = await api.post('/faculty/sessions', undefined, { params: { slotId: lecture.id } });
       // The list of sessions and the dashboard changed.
       invalidate('/faculty/sessions');
       invalidate('/faculty/dashboard');
-      toast('Attendance session started.', 'success');
+      invalidate('/faculty/schedule');
+      toast(`Attendance started for ${lecture.subjectCode} · ${lecture.section}.`, 'success');
       await resume(session);
     } catch (failure) {
       toast(failure.message, 'error');
-    } finally {
-      startButton.disabled = false;
+      button.disabled = false;
     }
   };
 
-  const setupCard = h('div.card', [
-    h('div.card-header', [h('h3', 'Session setup')]),
-    h('div.card-body.stack.stack-4', [
-      h('div.field', [h('label', { for: 'class-choice' }, 'Class section'), select]),
-      h('div.field', [h('label', { for: 'session-title' }, 'Session title'), titleInput]),
-      h('div.row.between.wrap.gap-3', [
-        h('span.text-sm.text-muted', 'The projected code changes every second and expires in a few seconds.'),
-        startButton
+  /**
+   * One lecture of the day.
+   */
+  const lectureRow = (lecture) => {
+    const button = h('button.button.button-primary', { type: 'button' }, 'Start attendance');
+    button.disabled = !lecture.open;
+    button.onclick = () => start(lecture, button);
+    return h('div.lecture-row', [
+      h('div.stack.stack-1', [
+        h('strong', `${lecture.subjectCode} · ${lecture.subjectName}`),
+        h('span.text-sm.text-muted', `${lecture.section} · ${lecture.room} · ${lecture.starts} – ${lecture.ends}`)
+      ]),
+      h('div.lecture-action', [
+        lecture.open ? null : h('span.text-xs.text-muted', lecture.message || ''),
+        button
       ])
-    ])
+    ]);
+  };
+
+  const setupCard = h('div.card', [
+    h('div.card-header', [
+      h('h3', "Today's lectures"),
+      h('span.text-xs.text-muted', 'Attendance follows the timetable')
+    ]),
+    h('div.card-body.stack.stack-3', lectures.length === 0
+      ? [emptyState('You have no lectures scheduled today, so there is no attendance to take.', '▤')]
+      : lectures.map(lectureRow))
   ]);
 
   container.replaceChildren(h('div.stack.stack-6', [
     h('div.page-head', [
       h('div', [
         h('h1', 'Take attendance'),
-        h('p.lead', 'Project the rotating code and watch the roster fill in as students check in.')
+        h('p.lead', 'Pick a lecture of the day, project the rotating code and watch the roster fill in as students check in.')
       ])
     ]),
     h('div.split-wide', [setupCard, sessionArea])

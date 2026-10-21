@@ -164,10 +164,24 @@ public class FacultyController {
         return attendance.sessions(currentAccount.id(authentication), parsed, Math.min(limit, 100));
     }
 
-    /** Opens a new attendance session. */
+    /**
+     * The lectures of the teacher today, with a note of whether attendance may be taken
+     * for them right now.
+     */
+    @GetMapping("/schedule")
+    public List<TimetableService.ScheduleEntry> schedule(Authentication authentication) {
+        return timetableService.scheduleToday(currentAccount.id(authentication));
+    }
+
+    /**
+     * Opens an attendance session for a lecture of the teaching diary.
+     *
+     * <p>Attendance is only taken for a scheduled lecture, and only while that lecture
+     * is running. A teacher with nothing on the timetable today cannot open a session.
+     */
     @PostMapping("/sessions")
-    public SessionView start(@Valid @RequestBody StartSessionRequest request, Authentication authentication) {
-        return attendance.startSession(currentAccount.id(authentication), request.classId(), request.title());
+    public SessionView start(@RequestParam long slotId, Authentication authentication) {
+        return attendance.startSession(currentAccount.id(authentication), slotId);
     }
 
     /** A single session. */

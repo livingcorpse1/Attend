@@ -394,6 +394,49 @@ table.data th.numeric {
   font-variant-numeric: tabular-nums;
 }
 
+/* The lectures of the day -------------------------------------------------- */
+.lecture-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-3) 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.lecture-row:last-child {
+  border-bottom: none;
+}
+
+.lecture-action {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex: 0 0 auto;
+  max-width: 22rem;
+}
+
+.lecture-action .text-xs {
+  text-align: right;
+}
+
+@media (max-width: 640px) {
+  .lecture-row {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .lecture-action {
+    max-width: none;
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .lecture-action .text-xs {
+    text-align: left;
+  }
+}
+
 /* Feedback --------------------------------------------------------------- */
 .empty-state {
   display: flex;

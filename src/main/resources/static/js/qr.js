@@ -25,48 +25,46 @@ async function waitForLibrary(name, timeoutMillis = 8000) {
  *
  * @returns {{panel: HTMLElement, video: HTMLVideoElement, canvas: HTMLCanvasElement, start: Function, stop: Function}}
  */
+/**
+ * Builds the QR scanner panel.
+ *
+ * <p>The panel shows the camera inside a frame, so it is obvious what the phone is
+ * looking at, and it carries a button that releases the camera again.
+ *
+ * @returns {{panel: HTMLElement, video: HTMLVideoElement, canvas: HTMLCanvasElement,
+ *            status: HTMLElement, start: Function, stop: Function, isRunning: Function}}
+ */
 export function scannerPanel() {
   const video = h('video', { playsinline: '', muted: '', autoplay: '' });
   const canvas = h('canvas', { hidden: true });
   const status = h('p.text-sm.text-muted', 'Point the camera at the code your teacher is showing.');
-  const panel = h('div.stack.stack-3', [video, status, canvas]);
+  const reticle = h('div.reticle');
+  const caption = h('div.caption', 'The camera is off');
+  const frame = h('div.camera-frame', [video, canvas, h('div.overlay', reticle), caption]);
+
+  const startButton = h('button.button.button-primary', { type: 'button' }, 'Start the camera');
+  const stopButton = h('button.button.button-secondary', { type: 'button', disabled: true }, 'Stop the camera');
+
+  const panel = h('div.stack.stack-3', [frame, h('div.row.gap-2.wrap', [startButton, stopButton]), status]);
 
   let stream = null;
   let frameHandle = null;
-
-  async function start() {
-    await waitForLibrary('jsQR');
-    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-      throw new Error('This browser cannot access the camera.');
-    }
-    stream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: { ideal: 'environment' } },
-      audio: false
-    });
-    video.srcObject = stream;
-    video.setAttribute('playsinline', '');
-    video.muted = true;
-    await video.play();
-    status.textContent = 'Scanning for the classroom code…';
-    await scan();
-  }
+  let running = false;
 
   async function scan() {
     const context = canvas.getContext('2d', { willReadFrequently: true });
-    const decode = (source, width, height) => {
-      const imageData = context.getImageData(0, 0, width, height);
-      return window.jsQR(imageData.data, width, height, { inversionAttempts: 'attemptBoth' });
-    };
 
     const tick = () => {
-      if (!stream) {
+      if (!running) {
         return;
       }
       if (video.readyState === video.HAVE_ENOUGH_DATA) {
         canvas.width = video.videoWidth;
         canvas.height = video.videoHeight;
         context.drawImage(video, 0, 0, canvas.width, canvas.height);
-        const result = decode(canvas, canvas.width, canvas.height);
+        const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+        const result = window.jsQR(imageData.data, canvas.width, canvas.height,
+          { inversionAttempts: 'attemptBoth' });
         if (result && result.data) {
           stop();
           status.textContent = 'Code captured. Hold on…';
@@ -79,7 +77,32 @@ export function scannerPanel() {
     frameHandle = window.requestAnimationFrame(tick);
   }
 
+  async function start() {
+    if (running) {
+      return;
+    }
+    await waitForLibrary('jsQR');
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      throw new Error('This browser cannot access the camera.');
+    }
+    stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: { ideal: 'environment' } },
+      audio: false
+    });
+    running = true;
+    video.srcObject = stream;
+    video.setAttribute('playsinline', '');
+    video.muted = true;
+    await video.play();
+    caption.textContent = 'Scanning for the classroom code';
+    status.textContent = 'Hold the code inside the frame.';
+    startButton.disabled = true;
+    stopButton.disabled = false;
+    scan();
+  }
+
   function stop() {
+    running = false;
     if (frameHandle) {
       window.cancelAnimationFrame(frameHandle);
       frameHandle = null;
@@ -91,9 +114,29 @@ export function scannerPanel() {
       stream = null;
     }
     video.srcObject = null;
+    caption.textContent = 'The camera is off';
+    status.textContent = 'The camera is off. Start it again when you are ready.';
+    startButton.disabled = false;
+    stopButton.disabled = true;
   }
 
-  return { panel, video, canvas, status, start, stop };
+  startButton.onclick = () => {
+    start().catch((failure) => {
+      status.textContent = '';
+      status.replaceWith(h('div.alert.alert-error', failure.message));
+    });
+  };
+  stopButton.onclick = stop;
+
+  return {
+    panel,
+    video,
+    canvas,
+    status,
+    start,
+    stop,
+    isRunning: () => running
+  };
 }
 
 /**

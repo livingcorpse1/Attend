@@ -15,7 +15,11 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
+
+import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.hasSize;
+import static org.hamcrest.Matchers.is;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.when;
@@ -50,6 +54,7 @@ class AttendanceFlowIntegrationTest {
     private MockHttpSession facultySession;
     private MockHttpSession studentSession;
     private long classId;
+    private long slotId;
 
     @BeforeEach
     void setUp() throws Exception {
@@ -61,6 +66,9 @@ class AttendanceFlowIntegrationTest {
         classId = TestFixtures.createClass(mvc, facultySession, subject, "A", "Room 1");
         TestFixtures.enrol(mvc, facultySession, "student@veriqra.local", classId);
         TestFixtures.enrol(mvc, facultySession, "student2@veriqra.local", classId);
+
+        // Attendance is only taken for a lecture that is on the teaching diary.
+        slotId = TestFixtures.addLectureToday(mvc, facultySession, classId);
     }
 
     @Test
@@ -268,6 +276,54 @@ class AttendanceFlowIntegrationTest {
                 .andExpect(status().isForbidden());
     }
 
+    @Test
+    void aTeacherCannotTakeTheAttendanceOfALectureThatIsNotOnTheirDiary() throws Exception {
+        // A colleague owns the other lecture.
+        String colleaguePassword = TestFixtures.addTeacher(mvc, facultySession, "faculty2@veriqra.local",
+                "Prof. Anand Iyer");
+        MockHttpSession colleague = login("faculty2@veriqra.local", colleaguePassword);
+        long colleagueSubject = TestFixtures.createSubject(mvc, colleague, "AT102", "Colleague Subject");
+        long colleagueClass = TestFixtures.createClass(mvc, colleague, colleagueSubject, "A", "Room 2");
+        long colleagueSlot = TestFixtures.addLectureToday(mvc, colleague, colleagueClass);
+
+        mvc.perform(post("/api/faculty/sessions").with(csrf())
+                        .session(facultySession)
+                        .param("slotId", Long.toString(colleagueSlot)))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("NOT_OWNER"));
+    }
+
+    @Test
+    void aTeacherCannotTakeTheAttendanceOfALectureOnAnotherDay() throws Exception {
+        int otherDay = java.time.LocalDate.now().getDayOfWeek().getValue() % 7 + 1;
+        long otherSlot = TestFixtures.addLecture(mvc, facultySession, classId, otherDay, "07:00", "08:00");
+
+        mvc.perform(post("/api/faculty/sessions").with(csrf())
+                        .session(facultySession)
+                        .param("slotId", Long.toString(otherSlot)))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("SLOT_NOT_OPEN"));
+    }
+
+    @Test
+    void aTeacherSeesTheLecturesOfTheDayInTheirDiary() throws Exception {
+        MvcResult result = mvc.perform(get("/api/faculty/schedule").session(facultySession))
+                .andExpect(status().isOk())
+                .andReturn();
+        List<Object> lectures = com.jayway.jsonpath.JsonPath.read(
+                result.getResponse().getContentAsString(), "$");
+        boolean found = false;
+        for (Object entry : lectures) {
+            @SuppressWarnings("unchecked")
+            java.util.Map<String, Object> lecture = (java.util.Map<String, Object>) entry;
+            if (((Number) lecture.get("id")).longValue() == slotId) {
+                found = true;
+                assertThat((Boolean) lecture.get("open"), is(true));
+            }
+        }
+        assertThat(found, is(true));
+    }
+
     /* ------------------------------------------------------------------ helpers */
 
     private void stubSuccessfulFaceCheck() {
@@ -289,8 +345,7 @@ class AttendanceFlowIntegrationTest {
     private long startSession() throws Exception {
         MvcResult result = mvc.perform(post("/api/faculty/sessions").with(csrf())
                         .session(facultySession)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"classId\":" + classId + "}"))
+                        .param("slotId", Long.toString(slotId)))
                 .andExpect(status().isOk())
                 .andReturn();
         return ((Number) com.jayway.jsonpath.JsonPath.read(result.getResponse().getContentAsString(), "$.id"))

@@ -17,8 +17,6 @@ import com.veriqra.app.service.attendance.StudentAttendanceService;
 import com.veriqra.app.service.biometric.BiometricService;
 import com.veriqra.app.service.biometric.CaptureReader;
 import jakarta.validation.Valid;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -30,8 +28,6 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.IOException;
-import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -191,43 +187,4 @@ public class StudentController {
         return attendance.submit(currentAccount.id(authentication), ticketId, captureReader.read(frames));
     }
 
-    /** Exports the attendance history of the signed in student as CSV. */
-    @GetMapping("/attendance/export.csv")
-    public ResponseEntity<byte[]> exportCsv(Authentication authentication) throws IOException {
-        long studentId = currentAccount.id(authentication);
-        List<Map<String, Object>> rows = reports.historyForStudent(studentId);
-        List<List<String>> body = new ArrayList<>();
-        for (Map<String, Object> row : rows) {
-            body.add(List.of(
-                    String.valueOf(row.get("recordedAt")),
-                    String.valueOf(row.get("status")),
-                    String.valueOf(row.get("method")),
-                    row.get("matchScore") == null ? "" : String.format("%.4f", row.get("matchScore"))));
-        }
-        byte[] csv = reports.toCsv(List.of("Recorded at", "Status", "Method", "Match score"), body);
-        return ResponseEntity.ok()
-                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=veriqra-attendance.csv")
-                .contentType(MediaType.parseMediaType("text/csv"))
-                .body(csv);
-    }
-
-    /** Exports the attendance history of the signed in student as PDF. */
-    @GetMapping("/attendance/export.pdf")
-    public ResponseEntity<byte[]> exportPdf(Authentication authentication) throws IOException {
-        long studentId = currentAccount.id(authentication);
-        List<Map<String, Object>> rows = reports.historyForStudent(studentId);
-        List<List<String>> body = new ArrayList<>();
-        for (Map<String, Object> row : rows) {
-            body.add(List.of(
-                    String.valueOf(row.get("recordedAt")),
-                    String.valueOf(row.get("status")),
-                    String.valueOf(row.get("method")),
-                    row.get("matchScore") == null ? "" : String.format("%.4f", row.get("matchScore"))));
-        }
-        byte[] pdf = reports.toPdf("My attendance", List.of("Recorded at", "Status", "Method", "Match score"), body);
-        return ResponseEntity.ok()
-                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=veriqra-attendance.pdf")
-                .contentType(MediaType.APPLICATION_PDF)
-                .body(pdf);
-    }
 }

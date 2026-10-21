@@ -23,13 +23,13 @@ import { cameraPanel, openCamera, captureSequence, framesToForm } from '../camer
  * @returns {Promise<any>}
  */
 export async function runLivenessCapture({ panel, challenge, submit, onFinished }) {
-  const { frame, video, reticle, caption } = cameraPanel();
+  const { frame, video, reticle, caption, stopButton } = cameraPanel();
   const strip = h('div.capture-strip');
   const status = h('p.text-sm.text-muted', 'Starting the camera…');
   const button = h('button.button.button-primary', { type: 'button', disabled: true }, 'Preparing…');
   const feedback = h('div');
 
-  replaceChildren(panel, frame, status, button, strip, feedback);
+  replaceChildren(panel, frame, status, h('div.row.gap-2.wrap', [button, stopButton]), strip, feedback);
 
   let session = null;
   const cleanup = () => {
@@ -37,6 +37,14 @@ export async function runLivenessCapture({ panel, challenge, submit, onFinished 
       session.stop();
       session = null;
     }
+    caption.textContent = 'The camera is off';
+    stopButton.disabled = true;
+  };
+  stopButton.onclick = () => {
+    cleanup();
+    status.textContent = 'The camera is off. Start it again when you are ready.';
+    button.disabled = false;
+    button.textContent = 'Start again';
   };
 
   try {
@@ -46,6 +54,7 @@ export async function runLivenessCapture({ panel, challenge, submit, onFinished 
     status.textContent = challenge.guidance;
     button.disabled = false;
     button.textContent = `Start · ${challenge.instruction}`;
+    stopButton.disabled = false;
   } catch (failure) {
     status.textContent = '';
     feedback.replaceChildren(h('div.alert.alert-error', failure.message));
@@ -87,7 +96,8 @@ export async function runLivenessCapture({ panel, challenge, submit, onFinished 
     }
   };
 
-  return undefined;
+  // The caller keeps this so the camera can be released when the student navigates away.
+  return { stop: cleanup };
 }
 
 /**
@@ -135,6 +145,9 @@ export async function renderVerification(container, route, { onVerified }) {
             startButton.textContent = 'Try the check again';
           }
         }
+      }).then((capture) => {
+        // Leaving the screen releases the camera.
+        container.dispose = () => capture?.stop?.();
       });
     } catch (failure) {
       replaceChildren(intro, h('div.alert.alert-error', failure.message));

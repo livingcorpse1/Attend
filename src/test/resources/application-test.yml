@@ -11,6 +11,11 @@ spring:
 veriqra:
   institution-name: Test College
   institution-location: Test City
+  # The tests run at any hour of the day, so the window in which attendance may be
+  # opened is widened to the whole day.
+  attendance:
+    open-before-minutes: 1440
+    open-after-minutes: 1440
 
 logging:
   level:

@@ -101,6 +101,8 @@ veriqra:
     local-directory: ${LOCAL_STORAGE_DIR:./data/storage}
   attendance:
     session-duration-minutes: ${SESSION_DURATION_MINUTES:180}
+    open-before-minutes: ${ATTENDANCE_OPEN_BEFORE_MINUTES:15}
+    open-after-minutes: ${ATTENDANCE_OPEN_AFTER_MINUTES:120}
     verification-ticket-ttl-seconds: ${VERIFICATION_TICKET_TTL:120}
     submission-interval-seconds: ${SUBMISSION_INTERVAL_SECONDS:3}
     max-login-failures: ${MAX_LOGIN_FAILURES:8}

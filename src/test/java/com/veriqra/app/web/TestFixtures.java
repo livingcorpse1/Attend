@@ -75,6 +75,30 @@ final class TestFixtures {
                 .andExpect(status().isOk());
     }
 
+    /** Adds a lecture to the teaching diary of the teacher. */
+    static long addLecture(MockMvc mvc, MockHttpSession teacher, long classId, int dayOfWeek, String starts,
+                           String ends) throws Exception {
+        MvcResult created = mvc.perform(post("/api/faculty/timetable").with(csrf())
+                        .session(teacher)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"classId\":" + classId + ",\"dayOfWeek\":" + dayOfWeek
+                                + ",\"starts\":\"" + starts + "\",\"ends\":\"" + ends + "\"}"))
+                .andExpect(status().isCreated())
+                .andReturn();
+        return ((Number) JsonPath.read(created.getResponse().getContentAsString(), "$.id")).longValue();
+    }
+
+    /**
+     * Adds a lecture to the teaching diary of the teacher for today.
+     *
+     * <p>Attendance is only taken for a lecture of the day, so the tests need a lecture
+     * that sits on the weekday of the day they run on.
+     */
+    static long addLectureToday(MockMvc mvc, MockHttpSession teacher, long classId) throws Exception {
+        int today = java.time.LocalDate.now().getDayOfWeek().getValue();
+        return addLecture(mvc, teacher, classId, today, "07:00", "08:00");
+    }
+
     /** The subject a class section belongs to. */
     static long subjectOf(MockMvc mvc, MockHttpSession teacher, long classId) throws Exception {
         MvcResult result = mvc.perform(get("/api/faculty/structure").session(teacher))

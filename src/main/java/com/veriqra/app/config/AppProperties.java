@@ -381,6 +381,12 @@ public class AppProperties {
         /** How long a started attendance session stays open, in minutes. */
         private int sessionDurationMinutes = 180;
 
+        /** How long before a lecture attendance may be opened, in minutes. */
+        private int openBeforeMinutes = 15;
+
+        /** How long after a lecture attendance may still be opened, in minutes. */
+        private int openAfterMinutes = 120;
+
         /** Lifetime of the ticket handed out after a successful QR scan, in seconds. */
         private int verificationTicketTtlSeconds = 120;
 
@@ -399,6 +405,22 @@ public class AppProperties {
 
         public void setSessionDurationMinutes(int sessionDurationMinutes) {
             this.sessionDurationMinutes = sessionDurationMinutes;
+        }
+
+        public int getOpenBeforeMinutes() {
+            return openBeforeMinutes;
+        }
+
+        public void setOpenBeforeMinutes(int openBeforeMinutes) {
+            this.openBeforeMinutes = openBeforeMinutes;
+        }
+
+        public int getOpenAfterMinutes() {
+            return openAfterMinutes;
+        }
+
+        public void setOpenAfterMinutes(int openAfterMinutes) {
+            this.openAfterMinutes = openAfterMinutes;
         }
 
         public int getVerificationTicketTtlSeconds() {

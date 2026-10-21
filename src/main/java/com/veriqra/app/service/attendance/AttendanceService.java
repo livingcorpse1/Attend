@@ -35,38 +35,40 @@ public class AttendanceService {
     private final AuditRepository audit;
     private final QrTokenService qrTokens;
     private final AppProperties properties;
+    private final com.veriqra.app.service.timetable.TimetableService timetableService;
     private final SecureRandom random = new SecureRandom();
 
     public AttendanceService(AttendanceRepository attendance,
                              AcademicRepository academic,
                              AuditRepository audit,
                              QrTokenService qrTokens,
-                             AppProperties properties) {
+                             AppProperties properties,
+                             com.veriqra.app.service.timetable.TimetableService timetableService) {
         this.attendance = attendance;
         this.academic = academic;
         this.audit = audit;
         this.qrTokens = qrTokens;
         this.properties = properties;
+        this.timetableService = timetableService;
     }
 
     /**
-     * Opens an attendance session for a class.
+     * Opens an attendance session for a lecture that is on the teacher's timetable.
      *
-     * @throws ApiException when the teacher is not assigned to the class
+     * <p>Attendance is only taken for a scheduled lecture, and only while that lecture
+     * is running. A teacher with nothing on the timetable cannot open a session.
      */
     @Transactional
-    public SessionView startSession(long facultyId, long classId, String title) {
-        if (!academic.facultyTeaches(facultyId, classId)) {
-            throw ApiException.forbidden("NOT_ASSIGNED",
-                    "You are not assigned to teach this class.");
-        }
+    public SessionView startSession(long facultyId, long slotId) {
+        AcademicRepository.TimetableSlot slot = timetableService.requireOpenSlot(facultyId, slotId);
         Instant now = Instant.now();
         Instant endsAt = now.plusSeconds(properties.getAttendance().getSessionDurationMinutes() * 60L);
         String nonce = newNonce();
-        long sessionId = attendance.insertSession(classId, facultyId, now, endsAt, nonce, title);
+        long sessionId = attendance.insertSession(slot.classId(), facultyId, now, endsAt, nonce,
+                slot.subjectCode() + " " + slot.subjectName(), slotId);
         audit.record(facultyId, "SESSION_STARTED", "session=" + sessionId, "TEACHER_ACTION",
-                "Attendance session opened", null, title);
-        log.info("Faculty {} opened attendance session {}", facultyId, sessionId);
+                "Attendance session opened for " + slot.subjectCode() + " " + slot.section(), null, slot.subjectCode());
+        log.info("Faculty {} opened attendance session {} for the lecture {}", facultyId, sessionId, slotId);
         return buildViews(List.of(attendance.findSession(sessionId).orElseThrow())).get(0);
     }
 

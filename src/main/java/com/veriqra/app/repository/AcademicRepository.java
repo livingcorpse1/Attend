@@ -299,6 +299,20 @@ public class AcademicRepository {
         db.update("delete from class_section where id = ?", classId);
     }
 
+    /** The timetable slots of a teacher on one weekday. */
+    public List<TimetableSlot> timetableForFacultyOnDay(long facultyId, int dayOfWeek) {
+        return db.query("""
+                select t.id, t.class_id, c.name as section, s.code as subject_code, s.name as subject_name,
+                       c.room, t.day_of_week, t.starts, t.ends, t.faculty_id, u.full_name as faculty_name
+                  from timetable t
+                  join class_section c on c.id = t.class_id
+                  join subject s on s.id = c.subject_id
+                  left join app_user u on u.id = t.faculty_id
+                 where t.faculty_id = ? and t.day_of_week = ?
+                 order by t.starts, c.name
+                """, TIMETABLE_MAPPER, facultyId, dayOfWeek);
+    }
+
     /** Removes a subject. */
     public void deleteSubject(long subjectId) {
         db.update("delete from subject where id = ?", subjectId);
