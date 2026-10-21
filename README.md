@@ -1,0 +1,305 @@
+# VeriQra
+
+**Presence, verified.** A college attendance platform where a rotating, signed classroom
+QR code is combined with a face check that runs entirely on the server.
+
+Built for **APSHAH College, Anandnagar, Thane**.
+
+---
+
+## What it does
+
+A teacher opens an attendance session for a class and projects a code that changes every
+second. A student scans the code with the installed web app and is asked to perform a
+random head movement. The server then decides three things on its own:
+
+1. **Was the code genuine?** The payload is signed with HMAC-SHA-256, expires within
+   seconds and is bound to the session, so a screenshot of the screen is worthless.
+2. **Was a live person in front of the camera?** The server picks the movement and
+   checks the head pose across the captured frames. A photograph cannot follow an
+   instruction.
+3. **Was it the enrolled student?** The live descriptor is compared with the template
+   that was stored during the identity check.
+
+Only when all three answers are yes does an attendance record appear. The browser is
+never trusted: it sends pixels and nothing else.
+
+### Roles
+
+| Role | What they get |
+| --- | --- |
+| **Student** | Sign up, complete the identity check, mark presence, see their attendance, their timetable and their biometric data. |
+| **Faculty** | Dashboard with a fortnight calendar, live attendance with the rotating code and the live roster, a weekly scheduler for their own lectures, timetable and reports. |
+| **Administrator** | Accounts, class sections, enrolments, institution settings and the audit trail. |
+
+### The teaching diary
+
+A teacher owns their own week. The **Timetable** screen is a scheduler: the days across
+the top, the hours down the side, and each lecture placed at the height that matches its
+time. Clicking an empty column opens the editor for that day and time, clicking a
+lecture opens it for editing, and the server refuses anything that would double book
+the teacher or the class.
+
+The **Dashboard** carries the same diary as a 2x7 calendar, two weeks of seven days,
+so a teacher can see the shape of their fortnight at a glance and step forward a week at
+a time.
+
+Only the subjects a teacher is assigned to can be scheduled, and only their own slots
+can be read, changed or removed.
+
+### Nothing about the college is compiled in
+
+There is no seed data beyond the demonstration accounts. The name of the college, its
+location, the attendance threshold, the version of the biometric notice, the subjects,
+the class sections, the rooms and the weekly schedule are all **data**, and they are
+entered by an administrator from the **Administration** screens:
+
+1. **Settings** — the name and the location of the institution, the threshold, the
+   version of the biometric notice.
+2. **Subjects** — a subject and the teacher who owns it.
+3. **Class sections** — a section and a room for a subject, and the students in it.
+4. **Timetable** — the teacher schedules their own lectures.
+
+A fresh installation therefore starts with accounts and nothing else, and the same
+build can be pointed at any college without a code change.
+
+---
+
+## The identity check
+
+A student creates an account themselves. The account is created in a *pending* state:
+it can sign in, but every other part of the student API is closed to it until the face
+check has passed.
+
+1. The student accepts the biometric data notice (the version is recorded).
+2. The server issues a random liveness challenge, for example *turn your head to your
+   left*.
+3. The browser captures five frames over about two seconds.
+4. The server checks the frame quality, the head movement, that the frames show the same
+   person, and that the descriptor matches the enrolment.
+5. A 128 dimensional template is stored. The photographs are not part of the template.
+
+The student can withdraw the template at any time from the **Biometric data** screen.
+
+---
+
+## Technology
+
+| Part | Choice | Why |
+| --- | --- | --- |
+| Backend | Spring Boot 3.5, Java 21 | Session security, validation, a real HTTP layer. |
+| Persistence | Plain JDBC on PostgreSQL | Supabase is PostgreSQL. Flyway owns the schema. |
+| Database | Supabase Postgres + Supabase Storage | Managed, backed up, and the storage bucket keeps the enrolment images. |
+| Computer vision | ONNX Runtime with YuNet and SFace | Detection and embedding run inside the trust boundary. No inference in the browser. |
+| Client | Plain HTML, CSS and ES modules | No build step. The whole client is served from this origin. |
+| Offline | A service worker | The application installs and opens on a weak connection. |
+
+The client ships **no third party assets**. The QR libraries are vendored, the fonts are
+the system stack and the content security policy forbids any external origin.
+
+### The look
+
+One warm neutral palette with one evergreen accent. There is no blue and no purple, no
+gradients on buttons and no glows: the interface recedes and the data comes forward.
+Primary actions are ink rather than a brand colour, which is what separates a tool from
+a toy. A light and a dark theme are both first class.
+
+---
+
+## Getting started
+
+### Requirements
+
+* Java 21 or newer
+* Node 18 or newer, only for the optional client checks
+* A Supabase project, or Docker for the local PostgreSQL
+
+### 1. Install the models
+
+The biometric pipeline needs two ONNX models. They are not in source control.
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\fetch-models.ps1
+```
+
+```bash
+./scripts/fetch-models.sh
+```
+
+The script verifies the SHA-256 of each download. The models land in `models/`.
+
+### 2. Configure the database
+
+The application reads a local `.env` file automatically, and a real environment variable
+always wins over the file. Copy the template and fill it in:
+
+```powershell
+Copy-Item .env.example .env
+notepad .env
+```
+
+Create a Supabase project, then take the connection string from **Project Settings →
+Database → Connection string**:
+
+```
+DATABASE_URL=jdbc:postgresql://postgres.PROJECT_REF:PASSWORD@aws-0-REGION.pooler.supabase.com:6543/postgres?sslmode=require
+DATABASE_USER=postgres.PROJECT_REF
+DATABASE_PASSWORD=your-database-password
+```
+
+Flyway creates the schema on the first start. No manual SQL is needed.
+
+Check the connection before you start the application:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\check-supabase.ps1
+```
+
+For a local database without Supabase:
+
+```powershell
+docker compose up -d postgres
+$env:DATABASE_URL = "jdbc:postgresql://localhost:5432/veriqra"
+$env:DATABASE_USER = "veriqra"
+$env:DATABASE_PASSWORD = "local-only-change-me"
+$env:DATABASE_DRIVER = "org.postgresql.Driver"
+```
+
+### 3. Run
+
+```powershell
+.\mvnw.cmd spring-boot:run
+```
+
+Open <http://localhost:8080>. The first start creates an administrator account. Set
+`BOOTSTRAP_ADMIN_PASSWORD` to choose the password; when it is empty a strong password is
+generated and written to the log.
+
+The default profile also creates a small demonstration dataset:
+
+| Account | Password |
+| --- | --- |
+| Admin | `admin@veriqra.local` / the value of `BOOTSTRAP_ADMIN_PASSWORD` |
+| Teacher | `faculty@veriqra.local` / `Demo!2026` |
+| Student | `student@veriqra.local` / `Demo!2026` |
+
+The demonstration accounts are the only seeded data. They exist so the application can be
+tried out, and they can be switched off with `DEMO_DATA_ENABLED=false`. Their password is
+reset on every start, so the sign in screen and the accounts never disagree.
+
+The subject, the class section, the room and the weekly schedule are **not** seeded.
+They belong to the college and are entered from the administration screens.
+
+Run with the `prod` profile to switch the demonstration accounts off as well.
+
+### 4. Deploy
+
+```powershell
+.\mvnw.cmd clean package
+docker compose up --build
+```
+
+The image contains the models and runs as an unprivileged user. Put it behind a TLS
+terminating reverse proxy: the camera and the service worker both require HTTPS outside
+localhost.
+
+---
+
+## Tests
+
+```powershell
+.\mvnw.cmd test
+```
+
+The suite covers the QR token rules, the whole attendance journey and the real computer
+vision pipeline. The vision tests are skipped when the models are not installed.
+
+Two optional client checks:
+
+```powershell
+node scripts\check-client.mjs          # parses every client module
+node --experimental-websocket scripts\smoke-client.mjs
+```
+
+The second one starts a headless browser, signs in as a teacher and as a student, visits
+every screen and fails on the first console error.
+
+And a soak, which leaves the server alone for a while and then checks that the database
+is still reachable. That is the check that catches a pooler dropping idle connections:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\soak-database.ps1 -Minutes 10
+```
+
+---
+
+## Project layout
+
+```
+src/main/java/com/veriqra/app/
+├── config/         configuration properties, security, web wiring
+├── domain/         the account model and the API shapes
+├── repository/     data access, one class per table group
+├── security/       roles, the current account, the error type
+├── service/
+│   ├── auth/       registration, sign in, the login throttle
+│   ├── attendance/ sessions, the QR token, the student flow
+│   ├── biometric/  detection, alignment, embedding, liveness, enrolment
+│   ├── report/     reporting and the export formats
+│   └── storage/    enrolment images, local or Supabase Storage
+└── web/            the controllers
+
+src/main/resources/
+├── db/migration/   the Flyway schema
+└── static/         the PWA: markup, styles, client modules, icons, worker
+
+scripts/            model download, icon generation, client checks
+models/             the ONNX models (downloaded, not in source control)
+```
+
+---
+
+## Configuration
+
+Every setting has an environment variable. The full list is in `.env.example`. The ones
+that matter most:
+
+| Variable | Meaning |
+| --- | --- |
+| `QR_SIGNING_SECRET` | Signs the rotating code. Rotating it invalidates every code. |
+| `DATABASE_URL` | The Supabase connection string. |
+| `DATABASE_POOL_SIZE` | How many connections the pool keeps. |
+| `DATABASE_KEEPALIVE_MS` | How often idle connections are pinged. Must be 30000 or more. |
+| `DATABASE_MAX_LIFETIME_MS` | How long a connection may live. |
+| `BOOTSTRAP_ADMIN_PASSWORD` | The password of the first administrator account. |
+| `DEMO_DATA_ENABLED` | Whether the demonstration accounts are created. |
+| `TEACHING_DAY_START` / `TEACHING_DAY_END` | The hours in which lectures may be scheduled. |
+| `SUPABASE_SERVICE_ROLE_KEY` | Used by the server for Storage. Never reaches the browser. |
+| `VERIQRA_MODELS_DIR` | Where the ONNX models live. |
+| `BIOMETRIC_MATCH_THRESHOLD` | The cosine similarity a live face must reach. |
+| `BIOMETRIC_LIVENESS_YAW_DELTA` | How far the head must turn to prove liveness. |
+| `INSTITUTION_TIMEZONE` | The timezone the times are shown in. |
+
+The name of the college and its location are **not** environment variables. They are
+institution settings, stored in the database and changed from the administration
+screens, so the same build can be pointed at any college.
+
+---
+
+## Documentation
+
+* [API.md](API.md) — every route, with its scope and its request and response shapes.
+* [SECURITY.md](SECURITY.md) — the threat model, the controls and the honest limits.
+* [BUILD_STATUS.md](BUILD_STATUS.md) — what is done, what is verified and what is not.
+
+---
+
+## Licence
+
+The YuNet and SFace models are published by the OpenCV model zoo and are covered by the
+Apache-2.0 licence. The QR libraries are vendored under their own MIT licences.
+
+The two portraits in `src/test/resources/fixtures` are official White House portraits of
+two former presidents. They are works of the United States federal government and are in
+the public domain; they were taken from the MIT licensed `face_recognition` project and
+are used to verify the face detection and recognition pipeline.

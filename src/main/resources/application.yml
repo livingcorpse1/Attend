@@ -1,0 +1,125 @@
+server:
+  port: ${PORT:8080}
+  error:
+    include-message: never
+    include-stacktrace: never
+  servlet:
+    session:
+      cookie:
+        http-only: true
+        same-site: lax
+        secure: ${SESSION_COOKIE_SECURE:false}
+      timeout: ${SESSION_TIMEOUT_MINUTES:120}m
+  compression:
+    enabled: true
+    mime-types: text/html,text/css,application/javascript,application/json,image/svg+xml
+  forward-headers-strategy: framework
+
+spring:
+  application:
+    name: VeriQra
+  datasource:
+    # Supabase is the production database. The connection string is the direct or the
+    # transaction pooler URL from the Supabase project settings. Locally the file backed
+    # H2 instance is used so that no external service is needed to run the app.
+    url: ${DATABASE_URL:jdbc:h2:file:./data/veriqra;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE}
+    username: ${DATABASE_USER:sa}
+    password: ${DATABASE_PASSWORD:}
+    driver-class-name: ${DATABASE_DRIVER:org.h2.Driver}
+    hikari:
+      maximum-pool-size: ${DATABASE_POOL_SIZE:5}
+      # One idle connection is enough. Holding several open only means more of them go
+      # stale while nobody is using them.
+      minimum-idle: 1
+      # Wait long enough for the pool to replace a connection the server has closed.
+      connection-timeout: 30000
+      validation-timeout: 5000
+      # Drop connections nobody is using.
+      idle-timeout: 60000
+      # Retire a connection well before the server would drop it. The value is in
+      # milliseconds.
+      max-lifetime: ${DATABASE_MAX_LIFETIME_MS:300000}
+      # Ping the idle connections so a dropped one is found and replaced before it is
+      # ever handed to a request. Without this the pool hands out dead connections and
+      # every query fails until the pool is recycled.
+      # The value is in milliseconds and has to be at least 30000.
+      keepalive-time: ${DATABASE_KEEPALIVE_MS:30000}
+      initialization-fail-timeout: 10000
+      pool-name: veriqra-pool
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+  servlet:
+    multipart:
+      max-file-size: ${UPLOAD_MAX_FILE_SIZE:4MB}
+      max-request-size: ${UPLOAD_MAX_REQUEST_SIZE:24MB}
+  threads:
+    virtual:
+      enabled: false
+  jackson:
+    default-property-inclusion: non_null
+    serialization:
+      write-dates-as-timestamps: false
+
+veriqra:
+  qr-secret: ${QR_SIGNING_SECRET:local-development-signing-secret-change-before-deploy-64-chars}
+  timezone: ${INSTITUTION_TIMEZONE:Asia/Kolkata}
+  low-attendance-threshold: ${LOW_ATTENDANCE_THRESHOLD:75}
+  # The password of the first administrator account. Empty means one is generated
+  # and written to the log.
+  bootstrap-admin-password: ${BOOTSTRAP_ADMIN_PASSWORD:}
+  # The demonstration accounts. Switch them off for a real deployment.
+  demo-data:
+    enabled: ${DEMO_DATA_ENABLED:true}
+  # The hours of the day in which lectures may be scheduled.
+  teaching-day:
+    starts: ${TEACHING_DAY_START:06:00}
+    ends: ${TEACHING_DAY_END:22:00}
+  qr:
+    ttl-seconds: ${QR_TTL_SECONDS:8}
+    refresh-seconds: ${QR_REFRESH_SECONDS:1}
+    clock-skew-seconds: ${QR_CLOCK_SKEW_SECONDS:5}
+  biometric:
+    models-directory: ${VERIQRA_MODELS_DIR:./models}
+    detection-threshold: ${BIOMETRIC_DETECTION_THRESHOLD:0.80}
+    match-threshold: ${BIOMETRIC_MATCH_THRESHOLD:0.55}
+    liveness-yaw-delta: ${BIOMETRIC_LIVENESS_YAW_DELTA:0.16}
+    frame-consistency-threshold: ${BIOMETRIC_FRAME_CONSISTENCY:0.50}
+    required-frames: ${BIOMETRIC_REQUIRED_FRAMES:5}
+    minimum-face-width-ratio: ${BIOMETRIC_MIN_FACE_RATIO:0.12}
+    minimum-sharpness: ${BIOMETRIC_MIN_SHARPNESS:40}
+    minimum-brightness: ${BIOMETRIC_MIN_BRIGHTNESS:35}
+    maximum-brightness: ${BIOMETRIC_MAX_BRIGHTNESS:225}
+    challenge-ttl-seconds: ${BIOMETRIC_CHALLENGE_TTL:120}
+    model-version: ${BIOMETRIC_MODEL_VERSION:yunet-2023mar+sface-2021dec}
+  storage:
+    provider: ${STORAGE_PROVIDER:local}
+    supabase-url: ${SUPABASE_URL:}
+    supabase-service-role-key: ${SUPABASE_SERVICE_ROLE_KEY:}
+    bucket: ${SUPABASE_STORAGE_BUCKET:veriqra-biometrics}
+    local-directory: ${LOCAL_STORAGE_DIR:./data/storage}
+  attendance:
+    session-duration-minutes: ${SESSION_DURATION_MINUTES:180}
+    verification-ticket-ttl-seconds: ${VERIFICATION_TICKET_TTL:120}
+    submission-interval-seconds: ${SUBMISSION_INTERVAL_SECONDS:3}
+    max-login-failures: ${MAX_LOGIN_FAILURES:8}
+    login-failure-window-minutes: ${LOGIN_FAILURE_WINDOW_MINUTES:15}
+  upload:
+    max-image-bytes: ${MAX_IMAGE_BYTES:3145728}
+    max-request-bytes: ${MAX_REQUEST_BYTES:25165824}
+
+logging:
+  level:
+    root: INFO
+    com.veriqra.app: INFO
+    org.springframework.jdbc.core: INFO
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: never

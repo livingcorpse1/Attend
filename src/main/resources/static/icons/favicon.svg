@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="VeriQra">
+  <rect width="64" height="64" rx="14" fill="#1c1b18"/>
+  <g fill="none" stroke="#f2efe8" stroke-width="4.4" stroke-linecap="round">
+    <path d="M13 24V13h11"/>
+    <path d="M51 13H40"/>
+    <path d="M51 24V13"/>
+    <path d="M13 51v-8"/>
+    <path d="M24 51H13"/>
+  </g>
+  <path d="M24 33.5 30 40l13-15" fill="none" stroke="#62a67e" stroke-width="5.2"
+        stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

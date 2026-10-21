@@ -1,0 +1,21 @@
+﻿# Build output
+/target/
+/data/
+
+# The ONNX models are downloaded with scripts/fetch-models.ps1, they are not in source control.
+/models/*.onnx
+
+# Local configuration and secrets.
+# .env holds the database password, the service role key and the signing secret.
+.env
+.env.local
+.env.*.local
+*.log
+
+# Editor and operating system noise
+.idea/
+.vscode/
+*.iml
+.DS_Store
+Thumbs.db
+node_modules/

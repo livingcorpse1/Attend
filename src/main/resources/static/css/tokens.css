@@ -1,0 +1,181 @@
+/*
+ * Design tokens.
+ *
+ * The palette is deliberately narrow: warm neutrals for the interface, one evergreen
+ * for the things that are good, one ochre for the things that need attention and one
+ * brick for the things that went wrong. There is no blue and no purple, because those
+ * colours read as a default rather than as a decision.
+ *
+ * Primary actions are ink, not a brand colour. That is what separates a tool from a
+ * toy: the buttons recede and the data comes forward.
+ */
+
+:root {
+  color-scheme: light;
+
+  /* Warm neutrals -------------------------------------------------------- */
+  --bg: #f4f3f0;
+  --bg-elevated: #ffffff;
+  --bg-sunken: #ebe9e4;
+  --surface: #ffffff;
+  --surface-hover: #f7f6f3;
+  --surface-active: #f0eee9;
+
+  --ink: #1c1b18;
+  --ink-strong: #0d0c0a;
+  --ink-muted: #6a6761;
+  --ink-subtle: #96928a;
+  --ink-inverse: #ffffff;
+
+  --line: #e2e0da;
+  --line-strong: #cdc9c0;
+
+  --nav-bg: #1c1b18;
+  --nav-ink: #e4e1d9;
+  --nav-ink-muted: #8d8980;
+  --nav-ink-active: #ffffff;
+  --nav-active-bg: #2e2c27;
+  --nav-line: #35332d;
+
+  /* Signal colours -------------------------------------------------------- */
+  --brand: #2f6b4f;
+  --brand-strong: #275a43;
+  --brand-deep: #1f4835;
+  --brand-soft: #e6efe9;
+  --brand-line: #c4dbcd;
+
+  --warning: #a5761a;
+  --warning-soft: #f7efdf;
+  --warning-line: #e2d0ac;
+
+  --danger: #a8392f;
+  --danger-soft: #f8e9e7;
+  --danger-line: #e6c4bf;
+
+  --neutral-soft: #efede8;
+
+  /* Interactive ------------------------------------------------------------ */
+  /* Primary buttons use ink, never a gradient. */
+  --accent: #1c1b18;
+  --accent-hover: #34322d;
+  --accent-ink: #ffffff;
+  --accent-soft: #ebe9e4;
+
+  --focus: #2f6b4f;
+
+  /* Typography ------------------------------------------------------------- */
+  --font-sans: "Inter", "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+  --font-display: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --font-mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+
+  --text-xs: 0.6875rem;
+  --text-sm: 0.8125rem;
+  --text-base: 0.875rem;
+  --text-md: 0.9375rem;
+  --text-lg: 1.0625rem;
+  --text-xl: 1.25rem;
+  --text-2xl: 1.5rem;
+  --text-3xl: 2rem;
+
+  --leading-tight: 1.22;
+  --leading-normal: 1.55;
+
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --weight-bold: 700;
+
+  --tracking-wide: 0.08em;
+  --tracking-wider: 0.14em;
+
+  /* Space ------------------------------------------------------------------ */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-10: 2.5rem;
+  --space-12: 3rem;
+  --space-16: 4rem;
+
+  /* Radii: restrained, one step down from the usual roundness. */
+  --radius-sm: 4px;
+  --radius-md: 7px;
+  --radius-lg: 10px;
+  --radius-xl: 14px;
+  --radius-pill: 999px;
+
+  /* Elevation: hairlines and very soft shadows, never glows. */
+  --shadow-xs: 0 1px 1px rgba(28, 27, 24, 0.04);
+  --shadow-sm: 0 1px 2px rgba(28, 27, 24, 0.06), 0 2px 6px rgba(28, 27, 24, 0.04);
+  --shadow-md: 0 2px 6px rgba(28, 27, 24, 0.07), 0 8px 24px rgba(28, 27, 24, 0.06);
+  --shadow-lg: 0 4px 12px rgba(28, 27, 24, 0.09), 0 20px 48px rgba(28, 27, 24, 0.1);
+
+  /* Layout ----------------------------------------------------------------- */
+  --sidebar-width: 244px;
+  --sidebar-width-compact: 72px;
+  --topbar-height: 60px;
+  --content-max: 1360px;
+
+  --transition-fast: 110ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-base: 180ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-slow: 280ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+[data-theme="dark"] {
+  color-scheme: dark;
+
+  --bg: #131311;
+  --bg-elevated: #1a1a17;
+  --bg-sunken: #0c0c0a;
+  --surface: #1b1b18;
+  --surface-hover: #232320;
+  --surface-active: #2b2b26;
+
+  --ink: #e6e3dc;
+  --ink-strong: #f7f5f0;
+  --ink-muted: #a09c93;
+  --ink-subtle: #78746c;
+  --ink-inverse: #131311;
+
+  --line: #2b2b26;
+  --line-strong: #3d3d36;
+
+  --nav-bg: #0c0c0a;
+  --nav-ink: #d6d3cb;
+  --nav-ink-muted: #7b776f;
+  --nav-ink-active: #ffffff;
+  --nav-active-bg: #26241f;
+  --nav-line: #26241f;
+
+  --brand: #62a67e;
+  --brand-strong: #74b68e;
+  --brand-deep: #8fc7a5;
+  --brand-soft: rgba(98, 166, 126, 0.14);
+  --brand-line: rgba(98, 166, 126, 0.32);
+
+  --warning: #d5a144;
+  --warning-soft: rgba(213, 161, 68, 0.14);
+  --warning-line: rgba(213, 161, 68, 0.3);
+
+  --danger: #d4736a;
+  --danger-soft: rgba(212, 115, 106, 0.14);
+  --danger-line: rgba(212, 115, 106, 0.3);
+
+  --neutral-soft: rgba(255, 255, 255, 0.05);
+
+  /* On a dark surface the primary action is the light one. */
+  --accent: #ece9e2;
+  --accent-hover: #ffffff;
+  --accent-ink: #16150f;
+  --accent-soft: rgba(255, 255, 255, 0.06);
+
+  --focus: #62a67e;
+
+  --shadow-xs: 0 1px 1px rgba(0, 0, 0, 0.3);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.45), 0 10px 28px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 6px 16px rgba(0, 0, 0, 0.5), 0 24px 56px rgba(0, 0, 0, 0.4);
+}

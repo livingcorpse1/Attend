@@ -1,0 +1,50 @@
+﻿# Local stack.
+#
+# The application runs against Supabase in a real deployment. This compose file is for
+# local development on a machine that has no Supabase project: it starts the API and a
+# PostgreSQL instance that behaves like the Supabase one.
+#
+#   docker compose up --build
+#   docker compose exec api powershell/../mvnw test   # or run the tests on the host
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: veriqra
+      POSTGRES_USER: veriqra
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-local-only-change-me}
+    ports:
+      - "5432:5432"
+    volumes:
+      - veriqra_pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U veriqra -d veriqra"]
+      interval: 5s
+      timeout: 3s
+      retries: 15
+
+  api:
+    build:
+      context: .
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: jdbc:postgresql://postgres:5432/veriqra
+      DATABASE_USER: veriqra
+      DATABASE_PASSWORD: ${POSTGRES_PASSWORD:-local-only-change-me}
+      DATABASE_DRIVER: org.postgresql.Driver
+      QR_SIGNING_SECRET: ${QR_SIGNING_SECRET:-change-me-before-you-deploy-this-64-chars}
+      STORAGE_PROVIDER: local
+      LOCAL_STORAGE_DIR: /app/data/storage
+      VERIQRA_MODELS_DIR: /app/models
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-default}
+    ports:
+      - "8080:8080"
+    volumes:
+      - veriqra_storage:/app/data/storage
+
+volumes:
+  veriqra_pg:
+  veriqra_storage:
