@@ -41,6 +41,10 @@ Every route is below `/api`. Responses are JSON unless stated otherwise.
 | `QR_INVALID` | 400 | The scanned code is forged, expired or belongs to another session. |
 | `ALREADY_RECORDED` | 409 | Attendance for this session exists. |
 | `SESSION_NOT_ACTIVE` / `SESSION_EXPIRED` | 409 | The class session is closed. |
+| `SLOT_NOT_OPEN` | 409 | The lecture is not running, so its attendance may not be taken. |
+| `NOT_OWNER` | 403 | The lecture, the subject or the class belongs to another teacher. |
+| `CLASS_EXISTS` | 409 | The teacher already has a class section with that name for that subject. |
+| `MODEL_CHANGED` | 400 | The template was enrolled with another pair of models, so the identity check has to be run again. |
 | `LOGIN_THROTTLED` / `SUBMISSION_TOO_FAST` | 429 | The client is going too fast. |
 | `BIOMETRIC_UNAVAILABLE` | 400 | The models are not installed on the server. |
 
@@ -142,10 +146,6 @@ The weekly schedule of the classes the student is enrolled in.
 
 The classes that are taking attendance right now.
 
-### `GET /api/student/attendance/export.csv` · `GET /api/student/attendance/export.pdf`
-
-The history as a download.
-
 ### `GET /api/student/biometric/status`
 
 ```json
@@ -159,6 +159,10 @@ The history as a download.
   "consentVersion": "yunet-2023mar+sface-2021dec"
 }
 ```
+
+`modelVersion` is the version of the template that is stored, `consentVersion` the version
+of the models the server runs with. When the two differ the template was enrolled with
+another pair of models and the student has to run the identity check again.
 
 ### `POST /api/student/biometric/challenge`
 
@@ -294,18 +298,47 @@ provisions the other teachers. The generated password is returned once.
 
 The weekly schedule of the teacher.
 
+### `GET /api/faculty/schedule`
+
+The lectures of the teacher on the day of the request, with a note of whether the
+attendance may be taken for them right now.
+
+```json
+[
+  {
+    "id": 7,
+    "classId": 14,
+    "subjectCode": "AIML",
+    "subjectName": "Artificial Intelligence & Machine Learning",
+    "section": "A",
+    "room": "Innovation Lab 204",
+    "dayOfWeek": 1,
+    "starts": "10:00",
+    "ends": "11:00",
+    "open": false,
+    "message": "That lecture starts at 10:00. Attendance opens 15 minutes before it."
+  }
+]
+```
+
 ### `GET /api/faculty/sessions?status=ACTIVE&limit=25`
 
 The sessions of the teacher, newest first. `status` accepts `ACTIVE`, `CLOSED`,
-`EXPIRED` or `ALL`.
+`EXPIRED` or `ALL`. A session whose time is up is never reported as running.
 
 ### `POST /api/faculty/sessions`
 
-Opens a session.
+Opens a session for a lecture of the teaching diary.
 
-```json
-{ "classId": 1, "title": "Unit 3 lecture" }
 ```
+POST /api/faculty/sessions?slotId=7
+```
+
+The lecture has to belong to the teacher and has to be running: the window opens
+`ATTENDANCE_OPEN_BEFORE_MINUTES` minutes before the lecture and closes
+`ATTENDANCE_OPEN_AFTER_MINUTES` minutes after it ends. A session for a lecture of
+another teacher is refused with `NOT_OWNER`, and a lecture that is not running is
+refused with `SLOT_NOT_OPEN`.
 
 ### `GET /api/faculty/sessions/{sessionId}`
 

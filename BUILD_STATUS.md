@@ -1,6 +1,6 @@
 # Build status
 
-Last reviewed: 2026-10-21, against version 2.0.0.
+Last reviewed: 2026-10-22, against version 2.0.0.
 
 ## Completed
 
@@ -23,9 +23,15 @@ Last reviewed: 2026-10-21, against version 2.0.0.
   a submission interval.
 * A teaching diary a teacher owns: lectures can be added, moved and removed, and the
   server refuses a slot that would double book the teacher or the class.
+* Attendance follows the diary. A session belongs to a lecture, the server refuses a
+  session for a lecture of another teacher or for a lecture that is not running, and the
+  screen lists the lectures of the day.
 * The teacher owns the academic structure: subjects, class sections and enrolments, all
   scoped to the teacher, all written to the audit trail.
-* CSV and PDF exports for the student and for the teacher.
+* CSV and PDF exports for the teacher. The student has no export.
+* Two pairs of face models, chosen by a setting: the permissive YuNet and SFace, and the
+  much stronger SCRFD and ArcFace of the InsightFace family. The pair is part of the
+  version that is stored with every template.
 * Scheduled housekeeping that closes expired sessions and prunes the temporary tables.
 
 ### Roles
@@ -46,8 +52,8 @@ administrator, no administration console and no administrator account.
 
 ### Nothing about the college is compiled in
 
-The only seeded data is the demonstration: one teacher, the subject **ML** with a class
-section, two students and one weekly lecture.
+The only seeded data is the demonstration: a staff of five teachers, one subject each
+with its class section, its students and its weekly lecture, and four students.
 
 * The name and the location of the college come from the environment, so the same build
   can be pointed at any college.
@@ -115,9 +121,12 @@ the database is still reachable and that a sign in still works.
 * A fortnight calendar, two rows of seven days, on the faculty dashboard.
 * A week scheduler on the faculty timetable: days across, hours down, lectures placed by
   time, with an editor for creating, moving and removing a lecture.
-* Screens for the teacher (dashboard, live attendance, timetable, reports) and for the
-  student (dashboard, verify presence, attendance, timetable, biometric data), plus the
-  sign in, sign up, identity check and administration screens.
+* Screens for the teacher (dashboard, live attendance, timetable, reports, profile) and
+  for the student (dashboard, verify presence, attendance, timetable, profile), plus the
+  sign in and sign up screens. The identity check lives in the profile of the student.
+* The attendance screen lists the lectures of the day and starts the one that is running.
+* The camera of the student is visible while the classroom code is scanned, and a button
+  releases it. The code cannot be typed in by hand.
 * A read cache with a stale while revalidate refresh, and a prefetch when the pointer
   rests on a menu entry, so the screens open without a wait.
 * A route stamp on the view container, so a screen that finishes loading after the user
@@ -125,8 +134,9 @@ the database is still reachable and that a sign in still works.
 
 ### Tooling
 
-* `scripts/fetch-models.ps1` and `scripts/fetch-models.sh` download the two ONNX models
-  and verify their SHA-256.
+* `scripts/fetch-models.ps1` and `scripts/fetch-models.sh` download the ONNX models of
+  the chosen pair and verify their SHA-256. `-Profile Strong` installs the pair of the
+  InsightFace family.
 * `scripts/generate-icons.ps1` draws the application icons.
 * `scripts/check-client.mjs` parses every client module.
 * `scripts/smoke-client.mjs` drives a headless browser through every screen.
@@ -137,15 +147,18 @@ the database is still reachable and that a sign in still works.
 
 ## Verified
 
-* The Maven suite passes: 53 tests.
+* The Maven suite passes: 59 tests.
   * `FaceRecognitionServiceTest` runs the real models against a known portrait: one
     face detected, the alignment produces the expected crop, the descriptor is stable
-    and two different faces score below the match threshold.
+    and two different faces score below the match threshold. Every pair of models that
+    is installed goes through the same checks, and the two detectors have to agree on
+    where the eyes of the face are.
   * `QrTokenServiceTest` covers signing, expiry, tampering and a foreign secret.
   * `AttendanceFlowIntegrationTest` covers the whole journey: the gate before the
     identity check, registration and consent, the password policy, the CSRF
     requirement, role scoping, the single use ticket, a failed face check creating no
-    record, a tampered code and the audited teacher correction.
+    record, a tampered code and the audited teacher correction. It also covers the
+    rule that attendance is only taken for a lecture of the day and of that teacher.
   * `TimetableIntegrationTest` covers the teaching diary: a teacher sees only their own
     slots, can add a lecture to their own subject, cannot schedule a subject they do
     not teach, cannot overlap themselves or the class, cannot leave the teaching day,
@@ -153,9 +166,9 @@ the database is still reachable and that a sign in still works.
   * `DatabasePoolConfigurationTest` pins the pool settings that keep the application
     alive against a pooler that closes idle connections, and checks that an unknown
     address or a wrong method is not reported as an internal error.
-* The browser smoke test passes 15 checks over the sign in, sign up, teacher and student
-  screens with no console errors. It builds the subject, the class section and the
-  enrolment it needs through the administration API, because nothing is seeded.
+* The browser smoke test passes 23 checks over the sign in, sign up, teacher and student
+  screens with no console errors. It builds the subject, the class section, the lecture
+  and the enrolment it needs through the teacher's own API, because nothing is seeded.
 * The application starts against the local H2 instance, applies the migrations and
   answers the health probe. It also runs against Supabase, where the schema was applied
   and the private storage bucket was created through the Storage API.

@@ -188,8 +188,13 @@ public class AppProperties {
         /** Directory that holds the ONNX models. */
         private String modelsDirectory = "./models";
 
-        /** Minimum YuNet detection score for a candidate face. */
-        private float detectionThreshold = 0.80f;
+        /**
+         * Minimum detection score for a candidate face.
+         *
+         * <p>Zero means the threshold of the configured pair of models is used, because
+         * the two detectors report their confidence differently.
+         */
+        private float detectionThreshold = 0f;
 
         /** Minimum cosine similarity between the live sample and the enrolled template. */
         private float matchThreshold = 0.55f;
@@ -218,8 +223,28 @@ public class AppProperties {
         /** Lifetime of a liveness challenge, in seconds. */
         private int challengeTtlSeconds = 120;
 
-        /** Model identifier stored alongside an enrolment so templates can be migrated later. */
-        private String modelVersion = "yunet-2023mar+sface-2021dec";
+        /**
+         * The pair of models the pipeline runs with.
+         *
+         * <p>Either {@code yunet-sface}, the permissive pair of the OpenCV model zoo, or
+         * {@code scrfd-arcface}, the strongest pair of the InsightFace family.
+         */
+        private String profile = "yunet-sface";
+
+        /**
+         * Model identifier stored alongside an enrolment so templates can be migrated later.
+         *
+         * <p>Empty means the version of the configured pair is used.
+         */
+        private String modelVersion = "";
+
+        public String getProfile() {
+            return profile;
+        }
+
+        public void setProfile(String profile) {
+            this.profile = profile;
+        }
 
         public String getModelsDirectory() {
             return modelsDirectory;

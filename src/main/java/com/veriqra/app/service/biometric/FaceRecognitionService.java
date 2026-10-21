@@ -37,8 +37,8 @@ public class FaceRecognitionService {
 
     private static final Logger log = LoggerFactory.getLogger(FaceRecognitionService.class);
 
-    /** File names of the two models the pipeline needs. */
-    public static final String DETECTOR_MODEL = "face_detection_yunet_2023mar.onnx";
+    /** The file names of the models of the default pair. */
+    public static final String DETECTOR_MODEL = "face_detection_yunet_2026may.onnx";
     public static final String EMBEDDER_MODEL = "face_recognition_sface_2021dec.onnx";
 
     /** Outcome of analysing one capture. */
@@ -64,10 +64,33 @@ public class FaceRecognitionService {
 
     private volatile FaceDetector detector;
     private volatile FaceEmbedder embedder;
+    private volatile BiometricProfile profile;
     private volatile String unavailableReason;
 
     public FaceRecognitionService(AppProperties properties) {
         this.properties = properties;
+    }
+
+    /**
+     * The pair of models the pipeline runs with.
+     *
+     * <p>The pair is read from the configuration, and the version of the pair is stored
+     * with every face template, so a template enrolled with another pair is never
+     * compared with a descriptor of this one.
+     */
+    public BiometricProfile profile() {
+        return BiometricProfile.fromId(properties.getBiometric().getProfile());
+    }
+
+    /**
+     * The version of the models, as it is stored with a face template.
+     */
+    public String modelVersion() {
+        String configured = properties.getBiometric().getModelVersion();
+        if (configured != null && !configured.isBlank()) {
+            return configured.trim();
+        }
+        return profile().version();
     }
 
     /**
@@ -218,9 +241,10 @@ public class FaceRecognitionService {
             if (detector != null && embedder != null) {
                 return detector;
             }
+            BiometricProfile selected = profile();
             Path directory = modelsDirectory();
-            Path detectorPath = directory.resolve(DETECTOR_MODEL);
-            Path embedderPath = directory.resolve(EMBEDDER_MODEL);
+            Path detectorPath = directory.resolve(selected.detectorFile());
+            Path embedderPath = directory.resolve(selected.embedderFile());
             if (!Files.isRegularFile(detectorPath) || !Files.isRegularFile(embedderPath)) {
                 unavailableReason = "The face verification models are missing from " + directory
                         + ". Run scripts/fetch-models.ps1 to install them.";
@@ -228,10 +252,20 @@ public class FaceRecognitionService {
                 return null;
             }
             try {
-                detector = new FaceDetector(detectorPath, properties.getBiometric().getDetectionThreshold());
-                embedder = new FaceEmbedder(embedderPath);
+                float threshold = properties.getBiometric().getDetectionThreshold();
+                if (threshold <= 0f) {
+                    threshold = selected.detectionThreshold();
+                }
+                FaceDetector loadedDetector = selected.detector() == BiometricProfile.Detector.SCRFD
+                        ? new ScrfdDetector(detectorPath, threshold)
+                        : new YuNetDetector(detectorPath, threshold);
+                FaceEmbedder loadedEmbedder = new FaceEmbedder(embedderPath, selected.embedder());
+                detector = loadedDetector;
+                embedder = loadedEmbedder;
+                profile = selected;
                 unavailableReason = null;
-                log.info("Biometric pipeline ready, models loaded from {}", directory);
+                log.info("Biometric pipeline ready, the {} pair was loaded from {}",
+                        selected.id(), directory);
                 return detector;
             } catch (OrtException | IOException ex) {
                 unavailableReason = "The face verification models could not be loaded: " + ex.getMessage();

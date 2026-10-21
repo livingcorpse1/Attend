@@ -142,13 +142,13 @@ public class BiometricService {
         Instant enrolledAt = Instant.now();
         String storagePath = storeEnrolmentImage(studentId, analysis.primaryFrame(), enrolledAt);
 
-        repository.saveTemplate(studentId, properties.getBiometric().getModelVersion(), embedding, enrolledAt,
+        repository.saveTemplate(studentId, face.modelVersion(), embedding, enrolledAt,
                 analysis.usableFrames(), analysis.qualityScore(), analysis.minPairwiseSimilarity(), storagePath);
         users.markFaceVerified(studentId, enrolledAt);
         consumeChallenge(challengeId);
         audit.record(studentId, "BIOMETRIC_ENROLLED", "student=" + studentId,
                 "SELF_SERVICE_ENROLMENT", "Face template enrolled and liveness verified",
-                null, properties.getBiometric().getModelVersion());
+                null, face.modelVersion());
 
         return new EnrolmentResponse(true, "Your face is verified. You can now mark attendance.",
                 "VERIFIED", analysis.qualityScore(), analysis.minPairwiseSimilarity(), enrolledAt);
@@ -173,6 +173,13 @@ public class BiometricService {
         }
 
         float[] enrolled = toFloats(template.get().embedding());
+        if (!face.modelVersion().equals(template.get().modelVersion())) {
+            // The template was enrolled with another pair of models, so the two
+            // descriptors cannot be compared. The student has to run the check again.
+            return MatchOutcome.failed("MODEL_CHANGED",
+                    "Your face was enrolled with another version of the face models. "
+                            + "Please run the identity check again to mark your attendance.");
+        }
         double similarity = face.similarity(analysis.descriptor(), enrolled);
         double threshold = face.matchThreshold();
         if (similarity < threshold) {
@@ -195,7 +202,7 @@ public class BiometricService {
                 template.map(BiometricRepository.FaceTemplate::sampleCount).orElse(0),
                 face.isAvailable(),
                 face.isAvailable() ? null : face.unavailableReason(),
-                properties.getBiometric().getModelVersion());
+                face.modelVersion());
     }
 
     /** Removes the biometric data of a student at their request. */

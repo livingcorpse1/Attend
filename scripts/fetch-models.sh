@@ -2,18 +2,36 @@
 #
 # Downloads the ONNX models used by the VeriQra biometric pipeline.
 #
-#   * face_detection_yunet_2023mar.onnx   - face detection + 5 point landmarks
-#   * face_recognition_sface_2021dec.onnx - 128 dimensional face embedding
+# Two pairs of models are supported:
 #
-# Both are published by the OpenCV model zoo (Apache-2.0). SHA-256 digests are
-# verified so a corrupted or substituted file cannot reach the inference
-# pipeline.
+#   The permissive pair, which is the default:
+#     * face_detection_yunet_2026may.onnx   - face detection + 5 point landmarks
+#     * face_recognition_sface_2021dec.onnx - 128 dimensional face embedding
+#   Both come from the OpenCV model zoo, under the MIT and the Apache-2.0 licence.
 #
-# Usage:  ./scripts/fetch-models.sh [target-directory]
+#   The strongest pair:
+#     * scrfd_10g.onnx         - face detection + 5 point landmarks
+#     * arcface_w600k_r50.onnx - 512 dimensional face embedding
+#   Both come from the InsightFace model family, whose weights are published for
+#   non commercial research.
+#
+# SHA-256 digests are verified so a corrupted or substituted file cannot reach the
+# inference pipeline.
+#
+# Usage:  ./scripts/fetch-models.sh [target-directory] [--strong]
 
 set -euo pipefail
 
-TARGET_DIR="${1:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/models}"
+TARGET_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/models"
+STRONG=0
+
+for argument in "$@"; do
+    case "$argument" in
+        --strong) STRONG=1 ;;
+        *) TARGET_DIR="$argument" ;;
+    esac
+done
+
 mkdir -p "$TARGET_DIR"
 
 download() {
@@ -44,14 +62,33 @@ download() {
     echo "OK    $name"
 }
 
-download "face_detection_yunet_2023mar.onnx" \
-    "https://github.com/opencv/opencv_zoo/raw/main/models/face_detection_yunet/face_detection_yunet_2023mar.onnx" \
-    "8f2383e4dd3cfbb4553ea8718107fc0423210dc964f9f4280604804ed2552fa4"
+if [[ "$STRONG" == "1" ]]; then
+    echo "The models of the InsightFace family are published for non commercial research."
+    echo "A deployment that is not a college project has to settle that question first."
+    echo ""
 
-download "face_recognition_sface_2021dec.onnx" \
-    "https://github.com/opencv/opencv_zoo/raw/main/models/face_recognition_sface/face_recognition_sface_2021dec.onnx" \
-    "0ba9fbfa01b5270c96627c4ef784da859931e02f04419c829e83484087c34e79"
+    download "scrfd_10g.onnx" \
+        "https://huggingface.co/globalnebula/insightface-buffalo-l-onnx/resolve/main/scrfd_10g.onnx" \
+        "5838f7fe053675b1c7a08b633df49e7af5495cee0493c7dcf6697200b85b5b91"
+
+    download "arcface_w600k_r50.onnx" \
+        "https://huggingface.co/globalnebula/insightface-buffalo-l-onnx/resolve/main/arcface_w600k_r50.onnx" \
+        "4c06341c33c2ca1f86781dab0e829f88ad5b64be9fba56e56bc9ebdefc619e43"
+else
+    download "face_detection_yunet_2026may.onnx" \
+        "https://github.com/opencv/opencv_zoo/raw/main/models/face_detection_yunet/face_detection_yunet_2026may.onnx" \
+        "ebafce4e3c118d6554634be5c27ab333b4c047a9a8c3faf1d7cf93101c22f0f0"
+
+    download "face_recognition_sface_2021dec.onnx" \
+        "https://github.com/opencv/opencv_zoo/raw/main/models/face_recognition_sface/face_recognition_sface_2021dec.onnx" \
+        "0ba9fbfa01b5270c96627c4ef784da859931e02f04419c829e83484087c34e79"
+fi
 
 echo ""
 echo "Models ready in $TARGET_DIR"
-echo "Set VERIQRA_MODELS_DIR if you want to keep them elsewhere."
+if [[ "$STRONG" == "1" ]]; then
+    echo "Set BIOMETRIC_PROFILE=scrfd-arcface in the .env file to use them."
+    echo "Students have to run the identity check again, because the descriptors changed."
+else
+    echo "Set VERIQRA_MODELS_DIR if you want to keep them elsewhere."
+fi

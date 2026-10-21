@@ -9,9 +9,10 @@ Built for **APSHAH College, Anandnagar, Thane**.
 
 ## What it does
 
-A teacher opens an attendance session for a class and projects a code that changes every
-second. A student scans the code with the installed web app and is asked to perform a
-random head movement. The server then decides three things on its own:
+A teacher opens an attendance session for a lecture of their teaching diary and projects
+a code that changes every second. A student scans the code with the installed web app and
+is asked to perform a random head movement. The server then decides three things on its
+own:
 
 1. **Was the code genuine?** The payload is signed with HMAC-SHA-256, expires within
    seconds and is bound to the session, so a screenshot of the screen is worthless.
@@ -31,13 +32,30 @@ administrator and no administration console.
 
 | Role | What they get |
 | --- | --- |
-| **Teacher** | Dashboard with a fortnight calendar, live attendance with the rotating code and the live roster, their own subjects and class sections, a weekly scheduler for their lectures, and reports. |
-| **Student** | Sign up, complete the identity check, mark presence, see their own attendance, their timetable and their biometric data. |
+| **Teacher** | Dashboard with a fortnight calendar, live attendance with the rotating code and the live roster, their own subjects and class sections, a weekly scheduler for their lectures, reports and a profile. |
+| **Student** | Sign up, complete the identity check, mark presence, see their own attendance, their timetable and their profile. |
 
 A teacher owns their own academic structure: they create the subjects they teach, the
 class sections that run them and the students who attend, and they can add a colleague to
 the teaching staff. Nobody can touch anybody else's subjects, classes or lectures, and
 every change is written to the audit trail.
+
+### The profile
+
+Both roles have a profile, and it is the one place that holds the account.
+
+The student finds the account details, the identity check with the camera, and the
+biometric data that is stored about them. The teacher finds the account details and the
+subjects and class sections they teach.
+
+### Attendance follows the timetable
+
+A teacher takes the attendance of a lecture, and only of a lecture that is on their
+teaching diary and is running. The **Take attendance** screen lists the lectures of the
+day, and the one that is running can be opened. A teacher with nothing on the timetable
+has no attendance to take, and the server refuses a session that does not belong to a
+lecture of the day. The window opens fifteen minutes before a lecture and closes two
+hours after it ends, so a teacher who is a little late can still start it.
 
 ### The teaching diary
 
@@ -67,9 +85,10 @@ the same build can be pointed at any college. Everything else is data:
 - The **accounts** are created by the students themselves. A teacher adds the other
   teachers, and the password is shown once.
 
-The only seeded data is the demonstration: one teacher, the subject **ML** with a class
-section, two students and one weekly lecture. It exists so the application can be tried
-out, and it can be switched off with `DEMO_DATA_ENABLED=false`.
+The only seeded data is the demonstration: a staff of five teachers, one subject each
+with its class section, its students and its weekly lecture, and four students. It exists
+so the application can be tried out, and it can be switched off with
+`DEMO_DATA_ENABLED=false`.
 
 ---
 
@@ -87,7 +106,37 @@ check has passed.
    person, and that the descriptor matches the enrolment.
 5. A 128 dimensional template is stored. The photographs are not part of the template.
 
-The student can withdraw the template at any time from the **Biometric data** screen.
+The student can withdraw the template at any time from their **profile**, which is also
+where the identity check itself lives.
+
+### The models
+
+The pipeline runs on two pairs of models, and the pair is a setting.
+
+| Pair | Detection | Recognition | Licence |
+| --- | --- | --- | --- |
+| `yunet-sface` (the default) | YuNet, five landmarks | SFace, 128 values | MIT and Apache-2.0 |
+| `scrfd-arcface` (the strongest) | SCRFD, five landmarks | ArcFace ResNet50, 512 values | non commercial research |
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\fetch-models.ps1            # the permissive pair
+powershell -ExecutionPolicy Bypass -File scripts\fetch-models.ps1 -Profile Strong
+```
+
+```bash
+./scripts/fetch-models.sh            # the permissive pair
+./scripts/fetch-models.sh --strong   # the strongest pair
+```
+
+The permissive pair is the default because it may be used for anything, including a
+commercial deployment. The stronger pair finds far more faces in hard pictures and
+separates identities much better, but the weights of the InsightFace family are
+published for non commercial research, so that has to be settled before a deployment
+that is not a college project uses them.
+
+The pair is part of the version that is stored with every template. A template that was
+enrolled with one pair is never compared with a descriptor of the other: the student is
+asked to run the identity check again instead.
 
 ---
 
@@ -179,20 +228,24 @@ $env:DATABASE_DRIVER = "org.postgresql.Driver"
 .\mvnw.cmd spring-boot:run
 ```
 
-Open <http://localhost:8080>. The first start creates an administrator account. Set
-`BOOTSTRAP_ADMIN_PASSWORD` to choose the password; when it is empty a strong password is
-generated and written to the log.
+Open <http://localhost:8080> and sign in with one of the demonstration accounts:
 
-The default profile also creates a small demonstration dataset:
+| Account | Password | What it shows |
+| --- | --- | --- |
+| `faculty@veriqra.local` | `Demo!2026` | The teacher of **AIML**, with a class section, its students and a weekly lecture. |
+| `faculty2@veriqra.local` | `Demo!2026` | The teacher of **AIDS**. |
+| `faculty3@veriqra.local` | `Demo!2026` | The teacher of **DBMS**. |
+| `faculty4@veriqra.local` | `Demo!2026` | The teacher of **CN**. |
+| `faculty5@veriqra.local` | `Demo!2026` | The teacher of **DSA**. |
+| `student@veriqra.local` | `Demo!2026` | A student, enrolled in three of the classes. |
+| `student2@veriqra.local` | `Demo!2026` | A student, enrolled in two of the classes. |
+| `student3@veriqra.local` | `Demo!2026` | A student, enrolled in three of the classes. |
+| `student4@veriqra.local` | `Demo!2026` | A student, enrolled in three of the classes. |
 
-| Account | Password |
-| --- | --- |
-| Teacher | `faculty@veriqra.local` / `Demo!2026` |
-| Student | `student@veriqra.local` / `Demo!2026` |
-
-The demonstration accounts are the only seeded data. The teacher teaches **ML** to two
-students, so the dashboard, the calendar and the live attendance screen all have
-something in them. They can be switched off with `DEMO_DATA_ENABLED=false`.
+The demonstration accounts are the only seeded data. Every teacher owns one subject with
+its class section, its students and its lecture of the week, so the dashboard, the
+calendar and the live attendance screen all have something in them. They can be switched
+off with `DEMO_DATA_ENABLED=false`.
 
 Run with the `prod` profile to switch the demonstration accounts off as well.
 
@@ -277,10 +330,14 @@ that matter most:
 | `DATABASE_MAX_LIFETIME_MS` | How long a connection may live. |
 | `INSTITUTION_NAME` | The name of the college. |
 | `INSTITUTION_LOCATION` | Where the college is. |
-| `DEMO_DATA_ENABLED` | Whether the demonstration accounts and class are created. |
+| `DEMO_DATA_ENABLED` | Whether the demonstration accounts and classes are created. |
 | `TEACHING_DAY_START` / `TEACHING_DAY_END` | The hours in which lectures may be scheduled. |
+| `ATTENDANCE_OPEN_BEFORE_MINUTES` | How long before a lecture attendance may be opened. |
+| `ATTENDANCE_OPEN_AFTER_MINUTES` | How long after a lecture attendance may still be opened. |
 | `SUPABASE_SERVICE_ROLE_KEY` | Used by the server for Storage. Never reaches the browser. |
 | `VERIQRA_MODELS_DIR` | Where the ONNX models live. |
+| `BIOMETRIC_PROFILE` | The pair of models: `yunet-sface` or `scrfd-arcface`. |
+| `BIOMETRIC_DETECTION_THRESHOLD` | The confidence a detection has to reach. Zero uses the threshold of the pair. |
 | `BIOMETRIC_MATCH_THRESHOLD` | The cosine similarity a live face must reach. |
 | `BIOMETRIC_LIVENESS_YAW_DELTA` | How far the head must turn to prove liveness. |
 | `INSTITUTION_TIMEZONE` | The timezone the times are shown in. |
@@ -298,7 +355,9 @@ that matter most:
 ## Licence
 
 The YuNet and SFace models are published by the OpenCV model zoo and are covered by the
-Apache-2.0 licence. The QR libraries are vendored under their own MIT licences.
+MIT and the Apache-2.0 licences. The SCRFD and ArcFace models of the stronger pair come
+from the InsightFace model family, whose weights are published for non commercial
+research. The QR libraries are vendored under their own MIT licences.
 
 The two portraits in `src/test/resources/fixtures` are official White House portraits of
 two former presidents. They are works of the United States federal government and are in

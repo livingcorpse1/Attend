@@ -82,7 +82,10 @@ veriqra:
     clock-skew-seconds: ${QR_CLOCK_SKEW_SECONDS:5}
   biometric:
     models-directory: ${VERIQRA_MODELS_DIR:./models}
-    detection-threshold: ${BIOMETRIC_DETECTION_THRESHOLD:0.80}
+    # The pair of models: yunet-sface (permissive licence) or scrfd-arcface (strongest).
+    profile: ${BIOMETRIC_PROFILE:yunet-sface}
+    # Zero means the threshold of the pair of models is used.
+    detection-threshold: ${BIOMETRIC_DETECTION_THRESHOLD:0}
     match-threshold: ${BIOMETRIC_MATCH_THRESHOLD:0.55}
     liveness-yaw-delta: ${BIOMETRIC_LIVENESS_YAW_DELTA:0.16}
     frame-consistency-threshold: ${BIOMETRIC_FRAME_CONSISTENCY:0.50}
@@ -92,7 +95,6 @@ veriqra:
     minimum-brightness: ${BIOMETRIC_MIN_BRIGHTNESS:35}
     maximum-brightness: ${BIOMETRIC_MAX_BRIGHTNESS:225}
     challenge-ttl-seconds: ${BIOMETRIC_CHALLENGE_TTL:120}
-    model-version: ${BIOMETRIC_MODEL_VERSION:yunet-2023mar+sface-2021dec}
   storage:
     provider: ${STORAGE_PROVIDER:local}
     supabase-url: ${SUPABASE_URL:}

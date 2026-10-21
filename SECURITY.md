@@ -27,6 +27,33 @@ browser  ──pixels──▶  server  ──detect / align / embed / compare�
 
 ---
 
+## The models
+
+The face pipeline runs on the server and never in the browser. Two pairs of models are
+supported and the pair is a setting.
+
+| Pair | Detection | Recognition | Licence |
+| --- | --- | --- | --- |
+| `yunet-sface` (the default) | YuNet | SFace, 128 values | MIT and Apache-2.0 |
+| `scrfd-arcface` (the strongest) | SCRFD | ArcFace ResNet50, 512 values | non commercial research |
+
+The permissive pair is the default, because it may be used for anything, including a
+commercial deployment. The stronger pair is measurably better: it finds far more faces in
+hard pictures, and two different people are further apart in the descriptor space. The
+weights of the InsightFace family are published for non commercial research, so a
+deployment that is not a college project has to settle that question before it uses them.
+
+The pair is part of the version that is stored with every template. A template enrolled
+with one pair is never compared with a descriptor of the other: the student is asked to
+run the identity check again, and the server refuses the comparison with `MODEL_CHANGED`
+instead of comparing two descriptor spaces that have nothing in common.
+
+The models are not in source control. `scripts/fetch-models.ps1` downloads them and
+verifies the SHA-256 of every file, so a substituted or corrupted model cannot silently
+reach the inference pipeline.
+
+---
+
 ## Threats and the controls
 
 ### A student marks attendance for somebody else

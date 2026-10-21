@@ -10,6 +10,14 @@ RUN chmod +x mvnw && ./mvnw -q -B dependency:go-offline
 COPY src src
 RUN ./mvnw -q -B clean package -DskipTests
 
+# The models are downloaded and their digests are checked here, so the runtime image
+# stays small and a substituted model cannot reach the inference pipeline.
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends curl ca-certificates \
+ && rm -rf /var/lib/apt/lists/*
+COPY scripts/fetch-models.sh scripts/fetch-models.sh
+RUN chmod +x scripts/fetch-models.sh && ./scripts/fetch-models.sh /build/models
+
 # Runtime stage.
 FROM eclipse-temurin:21-jre
 WORKDIR /app

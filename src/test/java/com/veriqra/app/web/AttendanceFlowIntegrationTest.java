@@ -58,6 +58,10 @@ class AttendanceFlowIntegrationTest {
 
     @BeforeEach
     void setUp() throws Exception {
+        // The face pipeline is mocked, so the version of the models is stubbed as well.
+        when(faceRecognition.modelVersion()).thenReturn("test-model");
+        when(faceRecognition.isAvailable()).thenReturn(true);
+
         facultySession = login("faculty@veriqra.local", "Demo!2026");
         studentSession = login("student@veriqra.local", "Demo!2026");
 
