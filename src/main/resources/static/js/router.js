@@ -11,6 +11,7 @@ const routes = new Map();
 let notFoundHandler = null;
 let beforeEach = null;
 let containerProvider = null;
+let afterEach = null;
 
 /**
  * Registers a route.
@@ -39,6 +40,15 @@ export function setGuard(guard) {
  */
 export function setContainerProvider(provider) {
   containerProvider = provider;
+}
+
+/**
+ * Sets the function that runs once a route has finished rendering.
+ *
+ * @param {(context: {path: string, container: HTMLElement}) => void} handler
+ */
+export function setAfterEach(handler) {
+  afterEach = handler;
 }
 
 /** The current route path without the leading hash. */
@@ -110,6 +120,9 @@ export async function resolve() {
     container.dataset.route = path;
   }
   await handler({ path, base, params, container, route: path });
+  if (afterEach) {
+    afterEach({ path, base, params, container, route: path });
+  }
 }
 
 /**

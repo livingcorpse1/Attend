@@ -8,7 +8,8 @@
 
 import { h } from '../dom.js';
 import { api } from '../api.js';
-import { formatDateTime, humanise, openModal, table, toast } from '../ui.js';
+import { formatDateTime, humanise, openModal, pageHead, table, toast } from '../ui.js';
+import { icon } from '../icons.js';
 
 /**
  * Renders the list of accounts.
@@ -49,16 +50,14 @@ export async function renderAdminUsers(container, route) {
   ], { empty: 'No accounts exist yet.' });
 
   container.replaceChildren(h('div.stack.stack-5', [
-    h('div.page-head', [
-      h('div', {
-        h1: 'Accounts',
-        lead: 'Students register themselves. Staff accounts are created here.'
-      }),
-      h('button.button.button-primary', {
+    pageHead({
+      title: 'Accounts',
+      lead: 'Students register themselves. Staff accounts are created here.',
+      actions: h('button.button.button-primary', {
         type: 'button',
         onClick: () => createUser(container)
-      }, 'Add a staff account')
-    ]),
+      }, [icon('user-plus', { size: 16 }), h('span', 'Add a staff account')])
+    }),
     h('div.card', [h('div.card-body card-body-flush', usersTable)])
   ]));
 }
@@ -146,22 +145,20 @@ export async function renderAdminClasses(container, route) {
   ], { empty: 'No subjects have been created yet.' });
 
   container.replaceChildren(h('div.stack.stack-5', [
-    h('div.page-head', [
-      h('div', {
-        h1: 'Academic structure',
-        lead: 'A subject belongs to a teacher, a class section belongs to a subject, a student is enrolled in a class section.'
-      }),
-      h('div.row.gap-2', [
+    pageHead({
+      title: 'Academic structure',
+      lead: 'A subject belongs to a teacher, a class section belongs to a subject, a student is enrolled in a class section.',
+      actions: [
         h('button.button.button-secondary', {
           type: 'button',
           onClick: () => createSubject(container, route, teachers)
-        }, 'Add a subject'),
+        }, [icon('plus', { size: 16 }), h('span', 'Add a subject')]),
         h('button.button.button-secondary', {
           type: 'button',
           onClick: () => createClass(container, route, subjects)
-        }, 'Add a class section')
-      ])
-    ]),
+        }, [icon('plus', { size: 16 }), h('span', 'Add a class section')])
+      ]
+    }),
     h('div.card', [
       h('div.card-header', [h('h3', 'Subjects')]),
       h('div.card-body card-body-flush', subjectsTable)
@@ -345,12 +342,10 @@ export async function renderAdminSettings(container, route) {
   }));
 
   container.replaceChildren(h('div.stack.stack-5', [
-    h('div.page-head', [
-      h('div', {
-        h1: 'Institution settings',
-        lead: 'The values that describe the college. They are stored in the database.'
-      })
-    ]),
+    pageHead({
+      title: 'Institution settings',
+      lead: 'The values that describe the college. They are stored in the database.'
+    }),
     h('div.card', [
       h('div.card-header', [h('h3', 'Settings')]),
       h('div.card-body', [
@@ -383,12 +378,10 @@ export async function renderAdminAudit(container, route) {
   ], { empty: 'Nothing has been recorded yet.' });
 
   container.replaceChildren(h('div.stack.stack-5', [
-    h('div.page-head', [
-      h('div', {
-        h1: 'Audit trail',
-        lead: 'Every change that affects attendance is written here and cannot be edited.'
-      })
-    ]),
+    pageHead({
+      title: 'Audit trail',
+      lead: 'Every change that affects attendance is written here and cannot be edited.'
+    }),
     h('div.card', [h('div.card-body card-body-flush', auditTable)])
   ]));
 }

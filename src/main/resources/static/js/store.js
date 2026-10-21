@@ -78,7 +78,7 @@ export function subscribe(listener) {
 export function applyTheme() {
   document.documentElement.setAttribute('data-theme', state.theme);
   document.querySelector('meta[name="theme-color"]')
-    ?.setAttribute('content', state.theme === 'dark' ? '#0a1020' : '#101a2e');
+    ?.setAttribute('content', state.theme === 'dark' ? '#000000' : '#ffffff');
 }
 
 /**

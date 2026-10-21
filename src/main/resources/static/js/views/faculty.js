@@ -12,11 +12,13 @@ import {
   formatPercentage,
   humanise,
   openModal,
+  pageHead,
   statTile,
   statusBadge,
   table,
   toast
 } from '../ui.js';
+import { icon } from '../icons.js';
 import { renderQr } from '../qr.js';
 import { createCalendar, createScheduler } from '../calendar.js';
 
@@ -40,11 +42,27 @@ export async function renderFacultyDashboard(container, route) {
         value: formatPercentage(data.overallPercentage, 1),
         foot: 'Across every subject you teach',
         tone,
-        meter: data.overallPercentage
+        meter: data.overallPercentage,
+        glyph: 'percent'
       }),
-      statTile({ label: 'Sessions held', value: String(data.sessionsHeld), foot: 'Since the semester started' }),
-      statTile({ label: 'Records marked', value: String(data.recordsMarked), foot: 'Present entries recorded' }),
-      statTile({ label: 'Classes taught', value: String(data.classesTaught), foot: 'Subjects assigned to you' })
+      statTile({
+        label: 'Sessions held',
+        value: String(data.sessionsHeld),
+        foot: 'Since the semester started',
+        glyph: 'calendar'
+      }),
+      statTile({
+        label: 'Records marked',
+        value: String(data.recordsMarked),
+        foot: 'Present entries recorded',
+        glyph: 'clipboard-check'
+      }),
+      statTile({
+        label: 'Classes taught',
+        value: String(data.classesTaught),
+        foot: 'Subjects assigned to you',
+        glyph: 'book'
+      })
     ]);
 
     const subjectTable = table(data.subjects, [
@@ -71,13 +89,14 @@ export async function renderFacultyDashboard(container, route) {
     }));
 
     container.replaceChildren(h('div.stack.stack-5', [
-      h('div.page-head', [
-        h('div', [
-          h('h1', 'Teaching dashboard'),
-          h('p.lead', 'Attendance across your classes, and who needs attention.')
-        ]),
-        h('a.button.button-primary.button-lg', { href: '#/attendance' }, 'Take attendance →')
-      ]),
+      pageHead({
+        title: 'Teaching dashboard',
+        lead: 'Attendance across your classes, and who needs attention.',
+        actions: h('a.button.button-primary', { href: '#/attendance' }, [
+          icon('radio', { size: 16 }),
+          h('span', 'Take attendance')
+        ])
+      }),
       stats,
       calendar,
       h('div.split-wide', [
@@ -113,7 +132,7 @@ export async function renderFacultyAttendance(container, route) {
 
   if (classes.length === 0) {
     container.replaceChildren(h('div.card.card-pad', emptyState(
-      'You are not assigned to any class yet. An administrator has to add you to a subject first.', '▤')));
+      'You are not assigned to any class yet. An administrator has to add you to a subject first.', 'book')));
     return;
   }
 
@@ -128,8 +147,12 @@ export async function renderFacultyAttendance(container, route) {
     'aria-label': 'Session title'
   });
 
-  const startButton = h('button.button.button-primary#start', { type: 'button' }, 'Start attendance session');
+  const startButton = h('button.button.button-primary#start', { type: 'button' }, [
+    icon('play', { size: 16 }),
+    h('span', 'Start attendance session')
+  ]);
   const sessionArea = h('div');
+  const rosterArea = h('div');
 
   const resume = async (session) => {
     renderSession(session);
@@ -167,20 +190,19 @@ export async function renderFacultyAttendance(container, route) {
   ]);
 
   container.replaceChildren(h('div.stack.stack-6', [
-    h('div.page-head', [
-      h('div', [
-        h('h1', 'Take attendance'),
-        h('p.lead', 'Project the rotating code and watch the roster fill in as students check in.')
-      ])
-    ]),
-    h('div.split-wide', [setupCard, sessionArea])
+    pageHead({
+      title: 'Take attendance',
+      lead: 'Project the rotating code and watch the roster fill in as students check in.'
+    }),
+    h('div.split-wide.split-top', [setupCard, sessionArea]),
+    rosterArea
   ]));
 
   if (sessions.length > 0) {
     await resume(sessions[0]);
   } else {
     replaceChildren(sessionArea, h('div.card.card-pad', emptyState(
-      'No session is running. Start one to project the classroom code.', '◉')));
+      'No session is running. Start one to project the classroom code.', 'radio')));
   }
 
   /**
@@ -194,8 +216,8 @@ export async function renderFacultyAttendance(container, route) {
     const qrHost = h('div');
     const countdown = h('span.qr-timer', '');
     const liveState = h('span.live-dot', 'Live');
-    const rosterHost = h('div', emptyState('Loading the roster…', '◷'));
-    const endButton = h('button.button.button-danger#end', { type: 'button' }, 'End session');
+    const rosterHost = h('div', emptyState('Loading the roster…', 'clock'));
+    const endButton = h('button.button.button-danger-secondary.button-sm#end', { type: 'button' }, 'End session');
 
     const stop = () => {
       closed = true;
@@ -277,30 +299,29 @@ export async function renderFacultyAttendance(container, route) {
       await renderFacultyAttendance(container);
     };
 
-    replaceChildren(sessionArea, h('div.stack.stack-5', [
-      h('div.card', [
-        h('div.card-header', [
-          h('div', [
-            h('h3', `${session.subjectCode} · ${session.section}`),
-            h('p.text-sm.text-muted', `${session.room} · started ${formatDateTime(session.startedAt)}`)
-          ]),
-          h('div.row.gap-3', [liveState, endButton])
+    replaceChildren(sessionArea, h('div.card', [
+      h('div.card-header', [
+        h('div', [
+          h('h3', `${session.subjectCode} · ${session.section}`),
+          h('p.text-sm.text-muted', `${session.room} · started ${formatDateTime(session.startedAt)}`)
         ]),
-        h('div.card-body.stack.stack-4', [
-          qrHost,
-          h('div.text-center', countdown),
-          h('div.alert.alert-info', h('span',
-            'Project this code on the screen. It is signed by the server, changes every second '
-            + 'and stops working within seconds of being captured on a phone.'))
-        ])
+        h('div.row.gap-3', [liveState, endButton])
       ]),
-      h('div.card', [
-        h('div.card-header', [
-          h('h3', 'Live roster'),
-          h('span.badge', 'Updates every 3 seconds')
-        ]),
-        h('div.card-body card-body-flush', rosterHost)
+      h('div.card-body.stack.stack-4', [
+        qrHost,
+        h('div.text-center', countdown),
+        h('div.alert.alert-info', h('span',
+          'Project this code on the screen. It is signed by the server, changes every second '
+          + 'and stops working within seconds of being captured on a phone.'))
       ])
+    ]));
+
+    replaceChildren(rosterArea, h('div.card', [
+      h('div.card-header', [
+        h('h3', 'Live roster'),
+        h('span.badge', 'Updates every 3 seconds')
+      ]),
+      h('div.card-body card-body-flush', rosterHost)
     ]));
 
     refreshQr();
@@ -408,16 +429,14 @@ export async function renderFacultyTimetable(container, route) {
     }));
 
     container.replaceChildren(h('div.stack.stack-5', [
-      h('div.page-head', [
-        h('div', [
-          h('h1', 'My timetable'),
-          h('p.lead', 'Schedule your lectures across the week. Only the subjects you teach can be added.')
-        ]),
-        h('button.button.button-primary', {
+      pageHead({
+        title: 'My timetable',
+        lead: 'Schedule your lectures across the week. Only the subjects you teach can be added.',
+        actions: h('button.button.button-primary', {
           type: 'button',
           onClick: () => openSlotEditor(container, classes, slots, null)
-        }, 'Add a lecture')
-      ]),
+        }, [icon('plus', { size: 16 }), h('span', 'Add a lecture')])
+      }),
       scheduler,
       h('div.card', [
         h('div.card-header', [h('h3', 'As a list')]),
@@ -437,7 +456,7 @@ export async function renderFacultyTimetable(container, route) {
  */
 function slotList(slots) {
   if (!slots || slots.length === 0) {
-    return emptyState('You have not scheduled any lectures yet.', '▤');
+    return emptyState('You have not scheduled any lectures yet.', 'calendar');
   }
   const byDay = new Map();
   for (const slot of slots) {
@@ -575,16 +594,20 @@ export async function renderFacultyReports(container, route) {
   ], { empty: 'Every student is above the threshold.' });
 
   container.replaceChildren(h('div.stack.stack-6', [
-    h('div.page-head', [
-      h('div', [
-        h('h1', 'Reports'),
-        h('p.lead', 'Totals computed from the attendance records.')
-      ]),
-      h('div.row.gap-2', [
-        h('a.button.button-secondary', { href: '/api/faculty/reports/low-attendance.csv', download: '' }, 'CSV'),
-        h('a.button.button-secondary', { href: '/api/faculty/reports/low-attendance.pdf', download: '' }, 'PDF')
-      ])
-    ]),
+    pageHead({
+      title: 'Reports',
+      lead: 'Totals computed from the attendance records.',
+      actions: [
+        h('a.button.button-secondary', { href: '/api/faculty/reports/low-attendance.csv', download: '' }, [
+          icon('download', { size: 16 }),
+          h('span', 'CSV')
+        ]),
+        h('a.button.button-secondary', { href: '/api/faculty/reports/low-attendance.pdf', download: '' }, [
+          icon('file', { size: 16 }),
+          h('span', 'PDF')
+        ])
+      ]
+    }),
     h('div.card', [
       h('div.card-header', [h('h3', 'By subject')]),
       h('div.card-body card-body-flush', subjectTable)

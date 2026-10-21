@@ -11,11 +11,13 @@ import {
   formatDateTime,
   formatPercentage,
   humanise,
+  pageHead,
   statTile,
   statusBadge,
   table,
   toast
 } from '../ui.js';
+import { icon } from '../icons.js';
 import { scannerPanel } from '../qr.js';
 import { runLivenessCapture, biometricPanel } from './verify.js';
 import { createScheduler } from '../calendar.js';
@@ -40,28 +42,32 @@ export async function renderStudentDashboard(container, route) {
         value: formatPercentage(data.overallPercentage, 1),
         foot: 'Target 75% or above',
         tone,
-        meter: data.overallPercentage
+        meter: data.overallPercentage,
+        glyph: 'percent'
       }),
       statTile({
         label: 'Sessions attended',
         value: String(data.subjectsAttended),
-        foot: `out of ${data.totalSessions} held`
+        foot: `out of ${data.totalSessions} held`,
+        glyph: 'clipboard-check'
       }),
       statTile({
         label: 'Live now',
         value: String(data.activeSessions),
-        foot: 'classes taking attendance'
+        foot: 'classes taking attendance',
+        glyph: 'radio'
       }),
       statTile({
         label: 'Identity check',
         value: data.biometricState === 'VERIFIED' ? 'Done' : 'Pending',
         foot: data.biometricState === 'VERIFIED' ? 'Your face template is enrolled' : 'Complete the check',
-        tone: data.biometricState === 'VERIFIED' ? 'good' : 'warn'
+        tone: data.biometricState === 'VERIFIED' ? 'good' : 'warn',
+        glyph: 'scan-face'
       })
     ]);
 
     const subjectTable = table(data.subjects, [
-      { key: 'subjectCode', label: 'Code' },
+      { key: 'subjectCode', label: 'Code', render: (row) => h('span.cell-strong', row.subjectCode) },
       { key: 'subjectName', label: 'Subject' },
       { key: 'sessions', label: 'Held', align: 'right' },
       { key: 'attended', label: 'Attended', align: 'right' },
@@ -71,12 +77,12 @@ export async function renderStudentDashboard(container, route) {
         align: 'right',
         render: (row) => h('span', {
           style: {
-            color: row.percentage >= 75 ? 'var(--brand)' : row.percentage >= 60 ? 'var(--warning)' : 'var(--danger)',
-            fontWeight: '600'
+            color: row.percentage >= 75 ? 'var(--success)' : row.percentage >= 60 ? 'var(--warning)' : 'var(--danger)',
+            fontWeight: '500'
           }
         }, formatPercentage(row.percentage))
       }
-    ], { empty: 'No subjects are linked to your account yet.', emptyGlyph: '▤' });
+    ], { empty: 'No subjects are linked to your account yet.', emptyGlyph: 'book' });
 
     const recentTable = table(data.recent, [
       { key: 'recordedAt', label: 'Recorded', render: (row) => formatDateTime(row.recordedAt) },
@@ -90,16 +96,17 @@ export async function renderStudentDashboard(container, route) {
           ? '—'
           : formatPercentage(row.matchScore * 100, 0))
       }
-    ], { empty: 'You have not marked any attendance yet.', emptyGlyph: '◷' });
+    ], { empty: 'You have not marked any attendance yet.', emptyGlyph: 'clipboard-check' });
 
     container.replaceChildren(h('div.stack.stack-5', [
-      h('div.page-head', [
-        h('div', [
-          h('h1', `Hello, ${firstName(currentAccount()?.fullName)}`),
-          h('p.lead', 'Here is where your attendance stands today.')
-        ]),
-        h('a.button.button-primary.button-lg', { href: '#/verify-presence' }, 'Mark my attendance →')
-      ]),
+      pageHead({
+        title: `Hello, ${firstName(currentAccount()?.fullName)}`,
+        lead: 'Here is where your attendance stands today.',
+        actions: h('a.button.button-primary', { href: '#/verify-presence' }, [
+          icon('qr', { size: 16 }),
+          h('span', 'Mark my attendance')
+        ])
+      }),
       stats,
       h('div.split-wide', [
         h('div.card', [
@@ -147,19 +154,23 @@ export async function renderStudentAttendance(container, route) {
         ? '—'
         : formatPercentage(row.matchScore * 100, 0))
     }
-  ], { empty: 'No attendance has been recorded yet.', emptyGlyph: '◷' });
+  ], { empty: 'No attendance has been recorded yet.', emptyGlyph: 'clipboard-check' });
 
   container.replaceChildren(h('div.stack.stack-6', [
-    h('div.page-head', [
-      h('div', [
-        h('h1', 'My attendance'),
-        h('p.lead', 'Every record that was created for your account, newest first.')
-      ]),
-      h('div.row.gap-2', [
-        h('a.button.button-secondary', { href: '/api/student/attendance/export.csv', download: '' }, 'Export CSV'),
-        h('a.button.button-secondary', { href: '/api/student/attendance/export.pdf', download: '' }, 'Export PDF')
-      ])
-    ]),
+    pageHead({
+      title: 'My attendance',
+      lead: 'Every record that was created for your account, newest first.',
+      actions: [
+        h('a.button.button-secondary', { href: '/api/student/attendance/export.csv', download: '' }, [
+          icon('download', { size: 16 }),
+          h('span', 'Export CSV')
+        ]),
+        h('a.button.button-secondary', { href: '/api/student/attendance/export.pdf', download: '' }, [
+          icon('file', { size: 16 }),
+          h('span', 'Export PDF')
+        ])
+      ]
+    }),
     h('div.card', [h('div.card-body card-body-flush', historyTable)])
   ]));
 }
@@ -177,12 +188,10 @@ export async function renderStudentTimetable(container, route) {
       return;
     }
     container.replaceChildren(h('div.stack.stack-5', [
-      h('div.page-head', [
-        h('div', {
-          h1: 'My timetable',
-          lead: 'Your weekly teaching schedule as published by the department.'
-        })
-      ]),
+      pageHead({
+        title: 'My timetable',
+        lead: 'Your weekly schedule as published by the department.'
+      }),
       h('div.card', createScheduler({ slots, editable: false }))
     ]));
   };
@@ -272,7 +281,10 @@ export async function renderVerifyPresence(container, route) {
                 h('span.text-xs', `Face match ${formatPercentage((submission.matchScore || 0) * 100, 0)} · liveness ${formatPercentage((submission.livenessScore || 0) * 100, 0)}`)
               ])
             ]),
-            h('a.button.button-primary', { href: '#/dashboard' }, 'Back to the dashboard')
+            h('a.button.button-primary', { href: '#/dashboard' }, [
+              icon('arrow-left', { size: 16 }),
+              h('span', 'Back to the dashboard')
+            ])
           ]));
         } else {
           replaceChildren(result, h('div.alert.alert-error', submission.message));
@@ -281,7 +293,10 @@ export async function renderVerifyPresence(container, route) {
     });
   };
 
-  const startButton = h('button.button.button-primary', { type: 'button' }, 'Start the camera scanner');
+  const startButton = h('button.button.button-primary.button-lg', { type: 'button' }, [
+    icon('camera', { size: 16 }),
+    h('span', 'Start the camera scanner')
+  ]);
   startButton.onclick = async () => {
     startButton.disabled = true;
     try {
@@ -324,22 +339,20 @@ export async function renderVerifyPresence(container, route) {
     ? h('div.card', [
       h('div.card-header', [h('h3', 'Classes taking attendance right now')]),
       h('div.card-body card-body-flush', table(sessions, [
-        { key: 'subjectCode', label: 'Code' },
+        { key: 'subjectCode', label: 'Code', render: (row) => h('span.cell-strong', row.subjectCode) },
         { key: 'subjectName', label: 'Subject' },
         { key: 'section', label: 'Section' },
         { key: 'room', label: 'Room' },
         { key: 'facultyName', label: 'Teacher' }
       ]))
     ])
-    : h('div.card.card-pad', emptyState('No class is taking attendance at the moment. Check again during your lecture.', '◉'));
+    : h('div.card.card-pad', emptyState('No class is taking attendance at the moment. Check again during your lecture.', 'radio'));
 
   container.replaceChildren(h('div.stack.stack-6', [
-    h('div.page-head', [
-      h('div', [
-        h('h1', 'Verify your presence'),
-        h('p.lead', 'Scan the classroom code and complete the camera check. Both have to succeed.')
-      ])
-    ]),
+    pageHead({
+      title: 'Verify your presence',
+      lead: 'Scan the classroom code and complete the camera check. Both have to succeed.'
+    }),
     h('div.split-wide', [panel, h('div.stack.stack-4', [livePanel])]),
     result
   ]));
@@ -359,12 +372,10 @@ export async function renderBiometricSettings(container, route) {
   }
 
   container.replaceChildren(h('div.stack.stack-6', [
-    h('div.page-head', [
-      h('div', [
-        h('h1', 'Biometric data'),
-        h('p.lead', 'What is stored about your face, and how to remove it.')
-      ])
-    ]),
+    pageHead({
+      title: 'Biometric data',
+      lead: 'What is stored about your face, and how to remove it.'
+    }),
     biometricPanel(status, async () => {
       toast('Your biometric data has been removed.', 'success');
       // The account changed, so it is read again before the next screen is opened.

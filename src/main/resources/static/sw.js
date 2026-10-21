@@ -6,7 +6,7 @@
  * from the server, never from a stale copy.
  */
 
-const CACHE_NAME = 'veriqra-shell-v2';
+const CACHE_NAME = 'veriqra-shell-v3';
 
 const SHELL_ASSETS = [
   '/',
@@ -20,6 +20,7 @@ const SHELL_ASSETS = [
   '/js/main.js',
   '/js/api.js',
   '/js/dom.js',
+  '/js/icons.js',
   '/js/store.js',
   '/js/router.js',
   '/js/ui.js',

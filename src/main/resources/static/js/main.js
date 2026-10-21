@@ -7,17 +7,19 @@
 
 import { h, replaceChildren } from './dom.js';
 import { api, prefetch } from './api.js';
-import { applyTheme, currentAccount, institution, refreshAccount, setState, toggleTheme } from './store.js';
+import { applyTheme, currentAccount, institution, refreshAccount, setState, theme, toggleTheme } from './store.js';
 import {
   isCurrent,
   navigate,
   route,
+  setAfterEach,
   setContainerProvider,
   setGuard,
   setNotFound,
   startRouter
 } from './router.js';
 import { toast, viewSkeleton } from './ui.js';
+import { icon } from './icons.js';
 import { renderLogin, renderSignup } from './views/auth.js';
 import { renderVerification } from './views/verify.js';
 import {
@@ -33,31 +35,36 @@ import {
   renderFacultyReports,
   renderFacultyTimetable
 } from './views/faculty.js';
-import { renderAdminAudit, renderAdminClasses, renderAdminSettings, renderAdminUsers } from './views/admin.js';
+import {
+  renderAdminAudit,
+  renderAdminClasses,
+  renderAdminSettings,
+  renderAdminUsers
+} from './views/admin.js';
 
 const root = document.getElementById('app');
 
 /** The navigation entries per role. */
 const NAVIGATION = {
   STUDENT: [
-    { path: '/dashboard', label: 'Dashboard', glyph: '⌂' },
-    { path: '/verify-presence', label: 'Verify presence', glyph: '◎' },
-    { path: '/attendance', label: 'My attendance', glyph: '◷' },
-    { path: '/timetable', label: 'Timetable', glyph: '▤' },
-    { path: '/biometric', label: 'Biometric data', glyph: '☺' }
+    { path: '/dashboard', label: 'Dashboard', glyph: 'dashboard' },
+    { path: '/verify-presence', label: 'Verify presence', glyph: 'qr' },
+    { path: '/attendance', label: 'My attendance', glyph: 'clipboard-check' },
+    { path: '/timetable', label: 'Timetable', glyph: 'calendar' },
+    { path: '/biometric', label: 'Biometric data', glyph: 'scan-face' }
   ],
   FACULTY: [
-    { path: '/dashboard', label: 'Dashboard', glyph: '⌂' },
-    { path: '/attendance', label: 'Take attendance', glyph: '◎' },
-    { path: '/timetable', label: 'Timetable', glyph: '▤' },
-    { path: '/reports', label: 'Reports', glyph: '▥' }
+    { path: '/dashboard', label: 'Dashboard', glyph: 'dashboard' },
+    { path: '/attendance', label: 'Take attendance', glyph: 'radio' },
+    { path: '/timetable', label: 'Timetable', glyph: 'calendar' },
+    { path: '/reports', label: 'Reports', glyph: 'chart' }
   ],
   ADMIN: [
-    { path: '/dashboard', label: 'Dashboard', glyph: '⌂' },
-    { path: '/users', label: 'Accounts', glyph: '♙' },
-    { path: '/classes', label: 'Subjects', glyph: '▤' },
-    { path: '/settings', label: 'Settings', glyph: '⚙' },
-    { path: '/audit', label: 'Audit trail', glyph: '◷' }
+    { path: '/dashboard', label: 'Dashboard', glyph: 'dashboard' },
+    { path: '/users', label: 'Accounts', glyph: 'users' },
+    { path: '/classes', label: 'Subjects', glyph: 'book' },
+    { path: '/settings', label: 'Settings', glyph: 'sliders' },
+    { path: '/audit', label: 'Audit trail', glyph: 'history' }
   ]
 };
 
@@ -83,7 +90,8 @@ const PREFETCH_BY_ROLE = {
     '/attendance': '/faculty/classes',
     '/timetable': '/faculty/timetable',
     '/reports': '/faculty/reports/subjects'
-  },  STUDENT: {
+  },
+  STUDENT: {
     '/dashboard': '/student/dashboard',
     '/attendance': '/student/attendance',
     '/timetable': '/student/timetable',
@@ -232,13 +240,23 @@ function registerRoutes() {
     }
     return true;
   });
+
+  // A screen that has just been opened is announced, and the focus moves to it, so
+  // that a keyboard user does not have to hunt for the new content.
+  setAfterEach(({ path, container }) => {
+    if (!container) {
+      return;
+    }
+    announce(PAGE_TITLES[path] || 'VeriQra');
+    enterView(container);
+  });
 }
 
 /**
  * Renders the sign in or the sign up screen.
  */
 async function renderAuthView(mode) {
-  replaceChildren(root, h('div', h('div.empty-state', 'Loading…')));
+  replaceChildren(root, h('div.empty-state', [h('div.glyph', h('div.spinner')), h('p', 'Loading…')]));
   const afterAuth = async () => {
     const bootstrap = await api.get('/auth/session');
     setState({ account: bootstrap.account, institution: bootstrap.institution || institution() });
@@ -269,8 +287,11 @@ function ensureShell() {
 
   const navItems = items.map((item) => h('a.nav-item', {
     href: `#${item.path}`,
-    dataset: { path: item.path }
-  }, [h('span.nav-icon', item.glyph), h('span', item.label)]));
+    dataset: { path: item.path, label: item.label }
+  }, [
+    h('span.nav-icon', icon(item.glyph, { size: 16 })),
+    h('span.nav-item-label', item.label)
+  ]));
 
   // Fetching the data of a screen the moment the pointer rests on it removes the wait
   // when the screen is actually opened.
@@ -291,20 +312,35 @@ function ensureShell() {
     prefetch('/faculty/sessions', { params: { status: 'ACTIVE' } });
   }
 
-  const content = h('section.content', { id: 'view' }, viewSkeleton());
+  const content = h('section.content', { id: 'view', tabindex: '-1' }, viewSkeleton());
 
   const shell = h('div.shell', [
     h('aside.sidebar', [
-      h('div.brand', [h('span.brand-mark', 'V'), h('span', 'VeriQra')]),
+      h('a.brand', { href: '#/dashboard' }, [
+        h('span.brand-mark', 'V'),
+        h('span.brand-text', [
+          h('span', 'VeriQra'),
+          institution().name ? h('small', institution().name) : null
+        ])
+      ]),
       h('div.nav-group', [
         h('div.nav-label', 'Workspace'),
         h('nav.stack.stack-1', navItems)
       ]),
       h('div.sidebar-foot', [
-        h('div.name', account.fullName),
-        h('div.role', account.role.toLowerCase()),
-        h('button.nav-item', { type: 'button', id: 'logout' },
-          [h('span.nav-icon', '↪'), h('span', 'Sign out')])
+        h('button.sidebar-user', {
+          type: 'button',
+          id: 'user-menu',
+          'aria-haspopup': 'menu',
+          'aria-expanded': 'false'
+        }, [
+          h('span.avatar', initials(account.fullName)),
+          h('span.sidebar-user-text.grow', [
+            h('span.name', account.fullName),
+            h('span.role', account.role.toLowerCase())
+          ]),
+          h('span.nav-icon', icon('more', { size: 16 }))
+        ])
       ])
     ]),
     h('div.main', [
@@ -312,7 +348,11 @@ function ensureShell() {
         h('h2', { id: 'page-title' }, PAGE_TITLES[currentPathSafe()] || 'VeriQra'),
         h('div.topbar-actions', [
           institution().name ? h('span.badge', institution().name) : null,
-          h('button.icon-button', { type: 'button', id: 'theme-toggle', 'aria-label': 'Switch the colour theme' }, '◐')
+          h('button.icon-button', {
+            type: 'button',
+            id: 'theme-toggle',
+            'aria-label': 'Switch the colour theme'
+          }, icon(theme() === 'dark' ? 'sun' : 'moon', { size: 16 }))
         ])
       ]),
       content
@@ -320,16 +360,117 @@ function ensureShell() {
   ]);
 
   replaceChildren(root, shell);
-  shell.querySelector('#theme-toggle').onclick = () => toggleTheme();
-  shell.querySelector('#logout').onclick = async () => {
-    await api.post('/auth/logout');
-    setState({ account: null });
-    replaceChildren(root);
-    navigate('/login');
+
+  shell.querySelector('#theme-toggle').onclick = () => {
+    toggleTheme();
+    const button = shell.querySelector('#theme-toggle');
+    replaceChildren(button, icon(theme() === 'dark' ? 'sun' : 'moon', { size: 16 }));
+  };
+
+  shell.querySelector('#user-menu').onclick = (event) => {
+    event.stopPropagation();
+    openUserMenu(event.currentTarget);
   };
 
   highlightNavigation();
   return content;
+}
+
+/**
+ * Opens the account menu under the user button in the rail.
+ */
+function openUserMenu(anchor) {
+  closeMenus();
+  const account = currentAccount();
+
+  const menu = h('div.menu', { role: 'menu' }, [
+    h('div.menu-item', { style: { cursor: 'default' } }, [
+      h('span', [
+        h('div', { style: { fontWeight: '500' } }, account.fullName),
+        h('div.text-xs.text-subtle', account.email || account.role.toLowerCase())
+      ])
+    ]),
+    h('div.menu-separator'),
+    h('button.menu-item.is-danger', {
+      type: 'button',
+      role: 'menuitem',
+      onClick: () => {
+        closeMenus();
+        signOut();
+      }
+    }, [icon('log-out', { size: 16 }), h('span', 'Sign out')])
+  ]);
+
+  document.body.append(menu);
+  positionMenu(menu, anchor, 'top');
+
+  anchor.setAttribute('aria-expanded', 'true');
+  menu.dataset.anchor = anchor.id;
+  menu.id = 'user-menu-panel';
+
+  setTimeout(() => {
+    document.addEventListener('click', closeMenus, { once: true });
+    document.addEventListener('keydown', onMenuKeyDown);
+  }, 0);
+}
+
+/**
+ * Places a menu next to its anchor, inside the window.
+ */
+function positionMenu(menu, anchor, placement) {
+  const bounds = anchor.getBoundingClientRect();
+  menu.style.position = 'fixed';
+  menu.style.zIndex = '100';
+  menu.style.visibility = 'hidden';
+  menu.style.left = '0px';
+  menu.style.top = '0px';
+
+  const size = menu.getBoundingClientRect();
+  const left = Math.min(
+    Math.max(8, bounds.left),
+    window.innerWidth - size.width - 8
+  );
+
+  let top = bounds.top - size.height - 8;
+  if (placement !== 'top' || top < 8) {
+    top = bounds.bottom + 8;
+  }
+  if (top + size.height > window.innerHeight - 8) {
+    top = Math.max(8, window.innerHeight - size.height - 8);
+  }
+
+  menu.style.left = `${left}px`;
+  menu.style.top = `${top}px`;
+  menu.style.visibility = 'visible';
+}
+
+/**
+ * Closes every open menu.
+ */
+function closeMenus() {
+  for (const menu of document.querySelectorAll('.menu[id]')) {
+    menu.remove();
+  }
+  for (const button of document.querySelectorAll('[aria-expanded="true"]')) {
+    button.setAttribute('aria-expanded', 'false');
+  }
+  document.removeEventListener('keydown', onMenuKeyDown);
+}
+
+function onMenuKeyDown(event) {
+  if (event.key === 'Escape') {
+    closeMenus();
+  }
+}
+
+/**
+ * Signs the account out and returns to the sign in screen.
+ */
+async function signOut() {
+  await api.post('/auth/logout');
+  setState({ account: null });
+  replaceChildren(root);
+  navigate('/login');
 }
 
 /**
@@ -338,11 +479,53 @@ function ensureShell() {
 function highlightNavigation() {
   const path = currentPathSafe();
   for (const link of document.querySelectorAll('.nav-item[data-path]')) {
-    link.classList.toggle('is-active', link.dataset.path === path);
+    const active = link.dataset.path === path;
+    link.classList.toggle('is-active', active);
+    if (active) {
+      link.setAttribute('aria-current', 'page');
+    } else {
+      link.removeAttribute('aria-current');
+    }
   }
   const title = document.getElementById('page-title');
   if (title) {
     title.textContent = PAGE_TITLES[path] || 'VeriQra';
+  }
+}
+
+/**
+ * The initials of a name, for the avatar.
+ */
+function initials(fullName) {
+  if (!fullName) {
+    return '?';
+  }
+  const parts = String(fullName).trim().split(/\s+/).slice(0, 2);
+  return parts.map((part) => part.charAt(0).toUpperCase()).join('') || '?';
+}
+
+/**
+ * Announces the screen that has just been opened to a screen reader.
+ */
+function announce(message) {
+  let region = document.getElementById('route-announcer');
+  if (!region) {
+    region = h('div.sr-only', { id: 'route-announcer', role: 'status', 'aria-live': 'polite' });
+    document.body.append(region);
+  }
+  region.textContent = message;
+}
+
+/**
+ * Plays the entrance of a screen and moves the focus to it.
+ */
+function enterView(container) {
+  container.classList.remove('view-enter');
+  // The class has to be taken off and put back for the animation to play again.
+  void container.offsetWidth;
+  container.classList.add('view-enter');
+  if (document.activeElement === document.body || document.activeElement === null) {
+    container.focus({ preventScroll: true });
   }
 }
 
@@ -362,20 +545,36 @@ function renderAdminDashboard(container) {
 
     container.replaceChildren(h('div.stack.stack-6', [
       h('div.page-head', [
-        h('div', {
-          h1: 'Institution overview',
-          lead: 'Accounts, classes and the state of the biometric enrolment.'
-        })
+        h('div', [
+          h('h1', 'Institution overview'),
+          h('p.lead', 'Accounts, classes and the state of the biometric enrolment.')
+        ])
       ]),
       h('div.stat-grid', [
-        statTile('Accounts', String(accounts.length), `${students.length} students`),
-        statTile('Verified students', String(verified.length), 'face template enrolled'),
-        statTile('Pending verification', String(students.length - verified.length), 'still to do the check'),
-        statTile('Class sections', String(classList.length), 'across all subjects')
+        h('div.stat', [
+          h('div.stat-label', 'Accounts'),
+          h('div.stat-value', String(accounts.length)),
+          h('div.stat-foot', `${students.length} students`)
+        ]),
+        h('div.stat', [
+          h('div.stat-label', 'Verified students'),
+          h('div.stat-value', String(verified.length)),
+          h('div.stat-foot', 'face template enrolled')
+        ]),
+        h('div.stat', [
+          h('div.stat-label', 'Pending verification'),
+          h('div.stat-value', String(students.length - verified.length)),
+          h('div.stat-foot', 'still to do the check')
+        ]),
+        h('div.stat', [
+          h('div.stat-label', 'Class sections'),
+          h('div.stat-value', String(classList.length)),
+          h('div.stat-foot', 'across all subjects')
+        ])
       ]),
       h('div.card', [
         h('div.card-header', [h('h3', 'Class sections')]),
-        h('div.card-body.card-body-flush', tableOfClasses(classList))
+        h('div.card-body card-body-flush', tableOfClasses(classList))
       ])
     ]));
   }).catch((failure) => {
@@ -383,14 +582,9 @@ function renderAdminDashboard(container) {
   });
 }
 
-function statTile(label, value, foot) {
-  return h('div.stat', [
-    h('div.stat-label', label),
-    h('div.stat-value', value),
-    h('div.stat-foot', foot)
-  ]);
-}
-
+/**
+ * Renders the list of class sections.
+ */
 function tableOfClasses(classList) {
   if (!classList || classList.length === 0) {
     return h('div.empty-state', 'No classes have been created yet.');

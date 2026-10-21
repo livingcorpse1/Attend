@@ -9,7 +9,8 @@
 import { h, replaceChildren } from '../dom.js';
 import { api } from '../api.js';
 import { isCurrent } from '../router.js';
-import { toast } from '../ui.js';
+import { pageHead, toast } from '../ui.js';
+import { icon } from '../icons.js';
 import { cameraPanel, openCamera, captureSequence, framesToForm } from '../camera.js';
 
 /**
@@ -103,7 +104,7 @@ export async function renderVerification(container, route, { onVerified }) {
     return;
   }
   const panel = h('div.card.card-pad.stack.stack-4', h('div.empty-state', [
-    h('div.glyph', '☺'),
+    h('div.glyph', icon('scan-face', { size: 20 })),
     h('p', 'The camera preview appears here once the check starts.'),
     h('p.text-sm.text-subtle', 'Nothing is recorded. Only the frames needed for the check are sent to the server.')
   ]));
@@ -141,8 +142,10 @@ export async function renderVerification(container, route, { onVerified }) {
     }
   };
 
-  const startButton = h('button.button.button-primary.button-lg', { type: 'button', onClick: start },
-    status.state === 'VERIFIED' ? 'Re-run the identity check' : 'Start the identity check');
+  const startButton = h('button.button.button-primary.button-lg', { type: 'button', onClick: start }, [
+    icon('scan-face', { size: 16 }),
+    h('span', status.state === 'VERIFIED' ? 'Re-run the identity check' : 'Start the identity check')
+  ]);
 
   replaceChildren(intro, [
     h('p.eyebrow', 'Identity check'),
@@ -157,11 +160,12 @@ export async function renderVerification(container, route, { onVerified }) {
   ]);
 
   container.replaceChildren(h('div.stack.stack-6', [
-    h('div.page-head', [
-      h('div', [h('h1', 'Identity check'), h('p.lead', 'Required once before you can mark attendance.')]),
-      startButton
-    ]),
-    h('div.split-wide', [
+    pageHead({
+      title: 'Identity check',
+      lead: 'Required once before you can mark attendance.',
+      actions: startButton
+    }),
+    h('div.split-wide.split-top', [
       h('div.card.card-pad.stack.stack-5', [intro, steps]),
       h('div.card.card-pad.stack.stack-4', [
         h('h3', 'Camera'),

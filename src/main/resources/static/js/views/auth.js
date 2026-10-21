@@ -5,12 +5,25 @@
 import { h, formValues } from '../dom.js';
 import { api } from '../api.js';
 import { toast } from '../ui.js';
+import { icon } from '../icons.js';
 import { consentVersion, demoAccounts, demoMode } from '../store.js';
 
 const SELLING_POINTS = [
-  { glyph: '⟳', title: 'Rotating codes', text: 'Every classroom code is signed and expires within seconds, so a screenshot cannot be reused.' },
-  { glyph: '☺', title: 'Verified presence', text: 'The face check runs on the server. Nobody can mark attendance for somebody else.' },
-  { glyph: '⧉', title: 'Works on any phone', text: 'Install it like an app. It keeps working on a weak connection and comes back online on its own.' }
+  {
+    glyph: 'refresh',
+    title: 'Rotating codes',
+    text: 'Every classroom code is signed and expires within seconds, so a screenshot cannot be reused.'
+  },
+  {
+    glyph: 'scan-face',
+    title: 'Verified presence',
+    text: 'The face check runs on the server. Nobody can mark attendance for somebody else.'
+  },
+  {
+    glyph: 'smartphone',
+    title: 'Works on any phone',
+    text: 'Install it like an app. It keeps working on a weak connection and comes back online on its own.'
+  }
 ];
 
 /**
@@ -18,14 +31,20 @@ const SELLING_POINTS = [
  */
 export function authAside() {
   return h('aside.auth-aside', [
-    h('div.brand', [h('span.brand-mark', 'V'), h('span', 'VeriQra', h('small', 'Presence, verified'))]),
-    h('div.stack.stack-4', [
+    h('div.brand', [
+      h('span.brand-mark', 'V'),
+      h('span', 'VeriQra', h('small', 'Presence, verified'))
+    ]),
+    h('div.stack.stack-3', [
       h('h2', 'Attendance you can actually trust.'),
       h('p', 'VeriQra pairs a rotating classroom code with a face check that runs on the server, so every attendance record is backed by evidence.')
     ]),
     h('div.auth-points', SELLING_POINTS.map((point) => h('div.auth-point', [
-      h('span.glyph', point.glyph),
-      h('div', [h('div', { style: { fontWeight: '600' } }, point.title), h('p.text-sm', { style: { color: '#a9b7d6' } }, point.text)])
+      h('span.glyph', icon(point.glyph, { size: 16 })),
+      h('div', [
+        h('div.point-title', point.title),
+        h('p.text-sm', { style: { color: '#a1a1a1' } }, point.text)
+      ])
     ])))
   ]);
 }
@@ -75,14 +94,7 @@ export async function renderLogin(container, onSignedIn) {
     ]),
     h('div.field', [
       h('label', { for: 'login-password' }, 'Password'),
-      h('input.input', {
-        id: 'login-password',
-        name: 'password',
-        type: 'password',
-        required: true,
-        autocomplete: 'current-password',
-        placeholder: 'Your password'
-      })
+      passwordField('login-password', 'password', 'current-password', 'Your password')
     ]),
     error,
     submit
@@ -96,13 +108,56 @@ export async function renderLogin(container, onSignedIn) {
     form,
     h('p.auth-switch', [
       'New student? ',
-      h('a', { href: '#/signup', onClick: () => {} }, 'Create an account')
+      h('a', { href: '#/signup' }, 'Create an account')
     ]),
     demoHint()
   ]);
 
   container.replaceChildren(h('div.auth', [authAside(), h('main.auth-main', card)]));
   container.querySelector('#login-email')?.focus();
+}
+
+/**
+ * A password field with a button that shows what is typed.
+ *
+ * @param {string} id
+ * @param {string} name
+ * @param {string} autocomplete
+ * @param {string} placeholder
+ * @returns {HTMLElement}
+ */
+function passwordField(id, name, autocomplete, placeholder) {
+  const input = h('input.input', {
+    id,
+    name,
+    type: 'password',
+    required: true,
+    autocomplete,
+    placeholder
+  });
+
+  const toggle = h('button.input-action', {
+    type: 'button',
+    'aria-label': 'Show the password',
+    onClick: () => {
+      const hidden = input.type === 'password';
+      input.type = hidden ? 'text' : 'password';
+      toggle.setAttribute('aria-label', hidden ? 'Hide the password' : 'Show the password');
+      replaceIcon(toggle, hidden ? 'eye-off' : 'eye');
+    }
+  }, icon('eye', { size: 16 }));
+
+  return h('div.input-group', [input, toggle]);
+}
+
+/**
+ * Swaps the drawing inside a button.
+ */
+function replaceIcon(node, name) {
+  const drawing = node.querySelector('svg');
+  if (drawing) {
+    drawing.replaceWith(icon(name, { size: 16 }));
+  }
 }
 
 /**
@@ -203,15 +258,7 @@ export async function renderSignup(container, onRegistered) {
     ]),
     h('div.field', [
       h('label', { for: 'signup-password' }, 'Password'),
-      h('input.input', {
-        id: 'signup-password',
-        name: 'password',
-        type: 'password',
-        required: true,
-        minLength: 10,
-        autocomplete: 'new-password',
-        placeholder: 'At least 10 characters'
-      }),
+      passwordField('signup-password', 'password', 'new-password', 'At least 10 characters'),
       h('span.hint', 'Mix letters and digits. Do not reuse a password from another site.')
     ]),
     h('div.alert.alert-info', [
@@ -238,7 +285,7 @@ export async function renderSignup(container, onRegistered) {
     form,
     h('p.auth-switch', [
       'Already registered? ',
-      h('a', { href: '#/login', onClick: () => {} }, 'Sign in instead')
+      h('a', { href: '#/login' }, 'Sign in instead')
     ])
   ]);
 
