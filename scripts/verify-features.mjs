@@ -275,7 +275,15 @@ async function run() {
   check('the profile holds the identity check', true);
 
   const check1 = await evaluate(`(async () => {
-    const start = [...document.querySelectorAll('button')].find((b) => b.textContent.includes('Start the identity check'));
+    const card = [...document.querySelectorAll('.card')].find((node) => {
+      const heading = node.querySelector('.card-header h3');
+      return heading && /identity check/i.test(heading.textContent);
+    });
+    const start = card ? [...card.querySelectorAll('button')]
+      .find((b) => /start|run/i.test(b.textContent)) : null;
+    if (!start) {
+      return { error: 'the identity check has no start button' };
+    }
     start.click();
     await new Promise((r) => setTimeout(r, 3500));
     const video = document.querySelector('.camera-frame video');
@@ -285,7 +293,7 @@ async function run() {
     };
   })()`);
   check('the camera of the identity check shows a picture', check1.width > 0,
-    `the picture is ${check1.width} pixels wide`);
+    check1.error || `the picture is ${check1.width} pixels wide`);
   check('the preview of the camera is mirrored like a mirror',
     check1.mirrored !== 'none' && check1.mirrored !== '', check1.mirrored);
 
