@@ -171,14 +171,20 @@ origin.
 
 ### The look
 
-The interface is built on the **Geist** design language: a neutral scale, one accent for
-the things that act, three semantic colours and nothing else that is saturated. Primary
-actions are ink rather than a brand colour, which is what separates a tool from a toy. A
-light and a dark theme are both first class.
+The interface is **monochromatic**. There is no accent colour and no hue anywhere: six
+greys carry the whole application — `#0D0D0D`, `#626262`, `#B5B5B5`, `#D0D0D0`,
+`#EAEAEA` and `#F5F5F5` — and what tells one state from another is its weight and its
+fill, not its colour.
+
+The depth comes from a pair of soft shadows rather than from a colour: a surface is
+either raised out of the page or pressed into it, with the light coming from the top left.
+Primary actions are ink rather than a brand colour, which is what separates a tool from
+a toy. A light and a dark theme are both first class, the type is one family in four
+weights, and the motion is short and optional.
 
 The whole system is written down in [DESIGN.md](DESIGN.md): the tokens, the shell, the
-parts and the rules that hold them together. The icons are one drawing, inline SVG on a
-24 unit grid, and there is no unicode in place of an icon anywhere.
+home page, the parts and the rules that hold them together. The icons are one drawing,
+inline SVG on a 24 unit grid, and there is no unicode in place of an icon anywhere.
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts\fetch-fonts.ps1
@@ -186,6 +192,15 @@ powershell -ExecutionPolicy Bypass -File scripts\fetch-fonts.ps1
 
 The fonts are downloaded once and served from this origin, so nothing is asked of a font
 service at runtime.
+
+### The home page
+
+`/` is the first thing a person sees. A thin bar with the mark, the links to the
+features, to the security and to the sign in. Then the headline, **Identity. Verified.**,
+the sentence that explains it, and the two actions: **Get Started** and **Explore
+Platform**. Then the features in three cards and the safeguards in a quiet list.
+
+There is no picture on it. The type, the space and the grey do the work.
 
 ---
 

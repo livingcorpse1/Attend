@@ -5,8 +5,11 @@ what the rules are, and which parts are still open for decision. Every rule here
 enforced somewhere in `src/main/resources/static`, so if the code and this document
 disagree, the code wins and this document is wrong.
 
-The interface is built on the **Geist** design language: the type, the neutral scale, the
-radii, the shadows and the component shapes that Vercel uses.
+The interface is **monochromatic**. There is no accent colour and no hue anywhere: every
+surface, every line, every shadow and every state is a step on one scale from near black
+to near white. The type is the Geist family, the depth comes from a pair of soft shadows
+rather than from a colour, and what separates one state from another is its weight and
+its fill.
 
 ---
 
@@ -54,54 +57,57 @@ static/
 
 These are the decisions the interface is built on. They are not suggestions.
 
-### 2.1 The neutral scale is the interface
+### 2.1 Six greys carry the whole interface
 
-Colour is a step on a scale, never a hue of its own. The scale runs from near black to
-near white, and a surface, a line and a piece of text are just steps on it.
+There is no colour in the interface. Everything is one of six greys, and what tells two
+things apart is their weight and their fill, never their hue.
 
 | Token | Light | Dark | Used for |
 | --- | --- | --- | --- |
-| `--background` | `#ffffff` | `#000000` | The page and every card |
-| `--surface` | `#fafafa` | `#0a0a0a` | Table headers, footers, quiet panels |
-| `--surface-2` | `#f2f2f2` | `#111111` | Hover, the active navigation entry |
-| `--surface-3` | `#ebebeb` | `#1a1a1a` | Meters, avatars, icon wells |
-| `--border` | `#eaeaea` | `#2e2e2e` | Every hairline |
-| `--border-strong` | `#d4d4d4` | `#404040` | The edge of an input |
-| `--text-primary` | `#0a0a0a` | `#ededed` | Headings and body text |
-| `--text-secondary` | `#666666` | `#a1a1a1` | Descriptions, table cells |
-| `--text-tertiary` | `#8f8f8f` | `#7d7d7d` | Labels, captions, hints |
+| `--background` | `#f5f5f5` | `#0d0d0d` | The page |
+| `--surface` | `#eaeaea` | `#151515` | Cards, the raised surfaces |
+| `--surface-inset` | `#f0f0f0` | `#101010` | The wells: inputs, icon boxes |
+| `--border` | `#d0d0d0` | `#262626` | Every hairline |
+| `--border-strong` | `#b5b5b5` | `#3a3a3a` | The edge of a control |
+| `--text-primary` | `#0d0d0d` | `#f5f5f5` | Headings and body text |
+| `--text-secondary` | `#626262` | `#b5b5b5` | Descriptions, table cells |
+| `--text-tertiary` | `#8a8a8a` | `#8a8a8a` | Labels, captions, hints |
 
-### 2.2 One accent, and it is not the primary button
+### 2.2 There is no accent, and the primary button is ink
 
-The accent is blue, `--accent: #0070f3`. It is used for links, focus rings and the
-things you can act on. It is **not** used for the primary button.
+`--accent` is the ink itself. It is used for links, focus rings and the things you can
+act on, and it is **not** used for the primary button.
 
 **A primary button is ink.** Black in the light theme, white in the dark theme, using
 `--foreground` on `--background`. That is what separates a tool from a toy: the buttons
-recede and the data comes forward. It also means the accent is free to mean "this is
-interactive" everywhere else.
+recede and the data comes forward.
 
-### 2.3 Three semantic colours, and nothing else is saturated
+### 2.3 The states are told apart by weight and fill
 
-| Colour | Light | Dark | It means |
+A state is never a colour, because there are no colours. It is a chip that is filled or
+outlined, and the strength of the fill says how strong the state is.
+
+| State | Light | Dark | It means |
 | --- | --- | --- | --- |
-| Success | `#0d7d4d` | `#50e3c2` | A thing went right. Present, verified, healthy. |
-| Warning | `#a85e05` | `#f5a623` | A thing needs attention. Low attendance, a pending check. |
-| Danger | `#e5484d` | `#ff6369` | A thing went wrong. Absent, failed, revoked. |
+| Success | A solid dark chip | A solid light chip | A thing went right. Present, verified, healthy. |
+| Warning | A mid grey chip | A mid grey chip | A thing needs attention. Low attendance, a pending check. |
+| Danger | An outlined chip with a strong border | An outlined chip with a strong border | A thing went wrong. Absent, failed, revoked. |
 
-Each one has a soft background and a line for the state it sits in. Nothing in the
-interface is a colour of its own, it is a step on the scale or one of these three.
+Every state carries a word as well, so the meaning never rests on the shape alone.
 
-### 2.4 Nothing glows
+### 2.4 The depth is a pair of soft shadows
 
-Elevation is a hairline border and, at most, a very soft shadow. No gradients on
-surfaces, no coloured glows, no glass. The interface is flat and gets its shape from
-borders and spacing.
+A surface is either raised out of the page or pressed into it. A raised surface carries a
+dark shadow below and to the right and a light one above and to the left, so the light
+seems to come from the top left. A pressed surface carries the same pair inside it.
+
+Nothing glows. There is no coloured shadow, no gradient on a surface and no glass. The
+shadows are black and grey, and they are quiet.
 
 ### 2.5 Four radii
 
-`6px`, `8px`, `12px`, `16px`, and a pill. A button and an input are `6px`, a card and a
-menu are `12px`, a modal is `12px`. A tool should look like it was made, not like it was
+`8px`, `12px`, `18px`, `26px`, and a pill. A button and an input are `8px`, a card and a
+menu are `18px`, a modal is `18px`. A tool should look like it was made, not like it was
 decorated.
 
 ### 2.6 One type family, four weights
@@ -209,8 +215,9 @@ list runs to the edges of the card.
 ### Stat tiles
 
 A small icon, a label in small caps, a large number, and a line of explanation. The
-number is coloured only when the number itself is a judgement: green above the
-threshold, ochre close to it, brick below. A meter shows where the number sits between
+number is set in ink only when the number itself is a judgement: the strong ink above the
+threshold, the middle grey close to it, the outlined ink below. A meter shows where the
+number sits between
 zero and a hundred.
 
 ### Tables
@@ -227,8 +234,8 @@ shouts.
 
 ### Toasts
 
-Bottom right, ink in the light theme, with the semantic colour when it is a success or
-an error. They dismiss themselves. They never carry the only copy of a message.
+Bottom right, ink in the light theme, with the state of the message when it is a success
+or an error. They dismiss themselves. They never carry the only copy of a message.
 
 ### Modals
 
@@ -241,9 +248,21 @@ the field that opened it.
 
 ## 5. The screens
 
+### The home page
+
+The first thing a person sees, and the only page that has to sell anything.
+
+A thin bar at the top with the mark, the links to the features, to the security and to
+the sign in. Then the headline, **Identity. Verified.**, the sentence that explains it,
+and the two actions: **Get Started** and **Explore Platform**. Then the features in
+three cards, the safeguards in a quiet list, and a thin foot.
+
+There is no picture on it. The type, the space and the grey do the work, and nothing is
+decorated that does not carry meaning.
+
 ### Sign in and sign up
 
-A split screen. The left half is black with a blue glow and a faint grid, and it
+A split screen. The left half is black with a faint grid and a soft light, and it
 explains what the product does. The right half is the form. Under 1080px the left half
 becomes a banner and the form takes the whole width.
 
@@ -304,10 +323,8 @@ branch exists.
 
 ## 7. The rules for changing this
 
-- One token file. If a colour is needed and it is not in `tokens.css`, it does not go
+- One token file. If a grey is needed and it is not in `tokens.css`, it does not go
   into a component.
-- No unicode in place of an icon. If the icon does not exist, it gets drawn.
-- A new colour has to say what it means.
 - A new animation has to respect `prefers-reduced-motion`.
 - A new control needs a hover and a focus state, and needs to survive being rendered
   by a screen reader.

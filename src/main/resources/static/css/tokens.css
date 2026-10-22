@@ -17,85 +17,84 @@
 /*
  * Design tokens.
  *
- * These are the Geist tokens: the neutral scale, the accent, the semantic colours and
- * the type ramp that Vercel uses, lifted as they are so the interface reads the same.
+ * The interface is monochromatic. There is no accent colour, no hue anywhere: every
+ * surface, every line, every shadow and every state is a step on a single scale from
+ * near black to near white. What separates a state from another is its weight and its
+ * fill, not its colour.
  *
- * The shape of the system:
- *
- *   - A neutral scale from near black to near white. Nothing in the interface is a
- *     colour of its own, it is a step on the scale.
- *   - One accent, blue, used for links, focus and the things you can act on.
- *   - Three semantic colours: success, warning and error. They are the only saturated
- *     colours in the interface, which is what makes them mean something.
- *   - Four radii and four shadows. That is the whole vocabulary.
+ *   - Six greys carry the whole interface: #0D0D0D, #626262, #B5B5B5, #D0D0D0,
+ *     #EAEAEA and #F5F5F5.
+ *   - The elevation is soft and shadowed in both directions, so a surface looks pressed
+ *     into the page or raised out of it.
+ *   - The type is one family in four weights, and the space is a scale of steps.
  */
 
-/* Geist neutral scale ----------------------------------------------------- */
+/* The scale ------------------------------------------------------------------ */
 :root {
   color-scheme: light;
 
-  /* Surfaces --------------------------------------------------------------- */
-  --background: #ffffff;
-  --foreground: #0a0a0a;
+  /* Surfaces ------------------------------------------------------------------ */
+  --background: #f5f5f5;
+  --foreground: #0d0d0d;
 
-  --surface: #fafafa;
-  --surface-2: #f2f2f2;
-  --surface-3: #ebebeb;
-  --surface-hover: #f2f2f2;
-  --surface-active: #ebebeb;
-  --surface-inset: #f7f7f7;
+  --surface: #eaeaea;
+  --surface-2: #f5f5f5;
+  --surface-3: #dcdcdc;
+  --surface-hover: #e4e4e4;
+  --surface-active: #dcdcdc;
+  --surface-inset: #f0f0f0;
 
-  /* Lines ------------------------------------------------------------------ */
-  --border: #eaeaea;
-  --border-strong: #d4d4d4;
-  --border-subtle: #f2f2f2;
+  /* Lines --------------------------------------------------------------------- */
+  --border: #d0d0d0;
+  --border-strong: #b5b5b5;
+  --border-subtle: #e2e2e2;
 
-  /* Text ------------------------------------------------------------------- */
-  --text-primary: #0a0a0a;
-  --text-secondary: #666666;
-  --text-tertiary: #8f8f8f;
-  --text-inverse: #ffffff;
+  /* Text ---------------------------------------------------------------------- */
+  --text-primary: #0d0d0d;
+  --text-secondary: #626262;
+  --text-tertiary: #8a8a8a;
+  --text-inverse: #f5f5f5;
 
-  /* Accent ----------------------------------------------------------------- */
-  --accent: #0070f3;
-  --accent-hover: #0068d6;
-  --accent-active: #0059a8;
-  --accent-soft: #e6f4ff;
-  --accent-soft-hover: #c2e3ff;
-  --accent-line: #a2d4ff;
-  --accent-on-soft: #0068d6;
+  /* The accent is the ink itself, so there is no second colour in the interface. */
+  --accent: #0d0d0d;
+  --accent-hover: #2a2a2a;
+  --accent-active: #0d0d0d;
+  --accent-soft: #e0e0e0;
+  --accent-soft-hover: #d6d6d6;
+  --accent-line: #b5b5b5;
+  --accent-on-soft: #0d0d0d;
 
-  /* Semantic --------------------------------------------------------------- */
-  --success: #0d7d4d;
-  --success-soft: #d1f9e5;
-  --success-line: #a6f4ce;
-  --success-on-soft: #097a3c;
+  /* States -------------------------------------------------------------------- */
+  --success: #0d0d0d;
+  --success-soft: #d0d0d0;
+  --success-line: #0d0d0d;
+  --success-on-soft: #0d0d0d;
 
-  --warning: #a85e05;
-  --warning-soft: #fff4e2;
-  --warning-line: #ffe8ba;
-  --warning-on-soft: #89450a;
+  --warning: #626262;
+  --warning-soft: #eaeaea;
+  --warning-line: #b5b5b5;
+  --warning-on-soft: #626262;
 
-  --danger: #e5484d;
-  --danger-hover: #ce2e31;
-  --danger-soft: #fde7e9;
-  --danger-line: #ffc9cd;
-  --danger-on-soft: #c21c1f;
+  --danger: #0d0d0d;
+  --danger-hover: #2a2a2a;
+  --danger-soft: transparent;
+  --danger-line: #0d0d0d;
+  --danger-on-soft: #0d0d0d;
 
-  --info: #0070f3;
-  --info-soft: #e6f4ff;
-  --info-line: #c2e3ff;
-  --info-on-soft: #0068d6;
+  --info: #626262;
+  --info-soft: #eaeaea;
+  --info-line: #b5b5b5;
+  --info-on-soft: #626262;
 
-  --neutral-soft: #f2f2f2;
-  --neutral-line: #eaeaea;
+  --neutral-soft: #eaeaea;
+  --neutral-line: #d0d0d0;
 
-  /* Focus ------------------------------------------------------------------ */
-  --focus: #0070f3;
-  --focus-ring: 0 0 0 3px rgba(0, 112, 243, 0.16);
-  --focus-ring-strong: 0 0 0 4px rgba(0, 112, 243, 0.2);
+  /* Focus --------------------------------------------------------------------- */
+  --focus: #0d0d0d;
+  --focus-ring: 0 0 0 3px rgba(13, 13, 13, 0.14);
+  --focus-ring-strong: 0 0 0 4px rgba(13, 13, 13, 0.2);
 
-  /* Typography ------------------------------------------------------------- */
+  /* Typography ---------------------------------------------------------------- */
   --font-sans: "Geist", "Geist Sans", -apple-system, BlinkMacSystemFont, "Segoe UI",
     Roboto, "Helvetica Neue", Arial, sans-serif;
   --font-display: "Geist", "Geist Sans", -apple-system, BlinkMacSystemFont, "Segoe UI",
@@ -125,7 +124,7 @@
   --tracking-wide: 0.04em;
   --tracking-wider: 0.12em;
 
-  /* Space ------------------------------------------------------------------ */
+  /* Space --------------------------------------------------------------------- */
   --space-1: 0.25rem;
   --space-2: 0.5rem;
   --space-3: 0.75rem;
@@ -136,95 +135,108 @@
   --space-10: 2.5rem;
   --space-12: 3rem;
   --space-16: 4rem;
+  --space-20: 5rem;
+  --space-24: 6rem;
 
-  /* Radii ------------------------------------------------------------------ */
-  --radius-sm: 6px;
-  --radius-md: 8px;
-  --radius-lg: 12px;
-  --radius-xl: 16px;
+  /* Radii --------------------------------------------------------------------- */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 18px;
+  --radius-xl: 26px;
   --radius-pill: 999px;
 
-  /* Elevation -------------------------------------------------------------- */
-  --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.04);
-  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.04);
-  --shadow-md: 0 4px 8px 0 rgba(0, 0, 0, 0.04), 0 1px 2px 0 rgba(0, 0, 0, 0.04);
-  --shadow-lg: 0 8px 24px 0 rgba(0, 0, 0, 0.08), 0 1px 2px 0 rgba(0, 0, 0, 0.04);
-  --shadow-xl: 0 32px 64px 0 rgba(0, 0, 0, 0.14), 0 2px 4px 0 rgba(0, 0, 0, 0.04);
+  /* Elevation ----------------------------------------------------------------- */
+  /* A surface is raised with a light shadow above and a dark one below, so the light
+     seems to come from the top left. Nothing here is coloured. */
+  --shadow-xs: 0 1px 2px rgba(13, 13, 13, 0.05);
+  --shadow-sm: 0 1px 2px rgba(13, 13, 13, 0.06), 0 2px 6px rgba(13, 13, 13, 0.04);
+  --shadow-md: 0 2px 4px rgba(13, 13, 13, 0.05), 0 8px 20px rgba(13, 13, 13, 0.06);
+  --shadow-lg: 0 4px 8px rgba(13, 13, 13, 0.05), 0 18px 40px rgba(13, 13, 13, 0.08);
+  --shadow-xl: 0 8px 16px rgba(13, 13, 13, 0.06), 0 40px 80px rgba(13, 13, 13, 0.1);
 
-  /* Layout ----------------------------------------------------------------- */
-  --sidebar-width: 248px;
-  --sidebar-width-compact: 68px;
-  --topbar-height: 52px;
+  /* The soft pair: a raised surface and one pressed into the page. */
+  --shadow-raised: 5px 5px 14px rgba(13, 13, 13, 0.07), -5px -5px 14px rgba(255, 255, 255, 0.85);
+  --shadow-raised-sm: 3px 3px 8px rgba(13, 13, 13, 0.06), -3px -3px 8px rgba(255, 255, 255, 0.8);
+  --shadow-sunken: inset 3px 3px 8px rgba(13, 13, 13, 0.08), inset -3px -3px 8px rgba(255, 255, 255, 0.9);
+
+  /* Layout -------------------------------------------------------------------- */
+  --sidebar-width: 260px;
+  --sidebar-width-compact: 72px;
+  --topbar-height: 60px;
   --content-max: 1400px;
 
-  /* Motion ----------------------------------------------------------------- */
-  --transition-fast: 100ms cubic-bezier(0.4, 0, 0.2, 1);
-  --transition-base: 150ms cubic-bezier(0.4, 0, 0.2, 1);
-  --transition-slow: 250ms cubic-bezier(0.22, 1, 0.36, 1);
+  /* Motion -------------------------------------------------------------------- */
+  --transition-fast: 120ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-base: 180ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-slow: 280ms cubic-bezier(0.22, 1, 0.36, 1);
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 [data-theme="dark"] {
   color-scheme: dark;
 
-  --background: #000000;
-  --foreground: #ededed;
+  --background: #0d0d0d;
+  --foreground: #f5f5f5;
 
-  --surface: #0a0a0a;
-  --surface-2: #111111;
-  --surface-3: #1a1a1a;
-  --surface-hover: #1a1a1a;
-  --surface-active: #262626;
-  --surface-inset: #0a0a0a;
+  --surface: #151515;
+  --surface-2: #1a1a1a;
+  --surface-3: #222222;
+  --surface-hover: #1f1f1f;
+  --surface-active: #2a2a2a;
+  --surface-inset: #101010;
 
-  --border: #2e2e2e;
-  --border-strong: #404040;
-  --border-subtle: #1a1a1a;
+  --border: #262626;
+  --border-strong: #3a3a3a;
+  --border-subtle: #1e1e1e;
 
-  --text-primary: #ededed;
-  --text-secondary: #a1a1a1;
-  --text-tertiary: #7d7d7d;
-  --text-inverse: #000000;
+  --text-primary: #f5f5f5;
+  --text-secondary: #b5b5b5;
+  --text-tertiary: #8a8a8a;
+  --text-inverse: #0d0d0d;
 
-  --accent: #3291ff;
-  --accent-hover: #52a8ff;
-  --accent-active: #79b8ff;
-  --accent-soft: rgba(0, 112, 243, 0.16);
-  --accent-soft-hover: rgba(0, 112, 243, 0.24);
-  --accent-line: rgba(50, 145, 255, 0.32);
-  --accent-on-soft: #79b8ff;
+  --accent: #f5f5f5;
+  --accent-hover: #e0e0e0;
+  --accent-active: #f5f5f5;
+  --accent-soft: #262626;
+  --accent-soft-hover: #2f2f2f;
+  --accent-line: #3a3a3a;
+  --accent-on-soft: #f5f5f5;
 
-  --success: #50e3c2;
-  --success-soft: rgba(80, 227, 194, 0.14);
-  --success-line: rgba(80, 227, 194, 0.3);
-  --success-on-soft: #50e3c2;
+  --success: #f5f5f5;
+  --success-soft: #2a2a2a;
+  --success-line: #f5f5f5;
+  --success-on-soft: #f5f5f5;
 
-  --warning: #f5a623;
-  --warning-soft: rgba(245, 166, 35, 0.14);
-  --warning-line: rgba(245, 166, 35, 0.3);
-  --warning-on-soft: #f5a623;
+  --warning: #b5b5b5;
+  --warning-soft: #212121;
+  --warning-line: #4a4a4a;
+  --warning-on-soft: #b5b5b5;
 
-  --danger: #ff6369;
-  --danger-hover: #ff8189;
-  --danger-soft: rgba(255, 99, 105, 0.14);
-  --danger-line: rgba(255, 99, 105, 0.3);
-  --danger-on-soft: #ff8189;
+  --danger: #f5f5f5;
+  --danger-hover: #e0e0e0;
+  --danger-soft: transparent;
+  --danger-line: #f5f5f5;
+  --danger-on-soft: #f5f5f5;
 
-  --info: #3291ff;
-  --info-soft: rgba(50, 145, 255, 0.14);
-  --info-line: rgba(50, 145, 255, 0.3);
-  --info-on-soft: #79b8ff;
+  --info: #b5b5b5;
+  --info-soft: #212121;
+  --info-line: #4a4a4a;
+  --info-on-soft: #b5b5b5;
 
-  --neutral-soft: rgba(255, 255, 255, 0.06);
-  --neutral-line: #2e2e2e;
+  --neutral-soft: #1c1c1c;
+  --neutral-line: #262626;
 
-  --focus: #3291ff;
-  --focus-ring: 0 0 0 3px rgba(50, 145, 255, 0.2);
-  --focus-ring-strong: 0 0 0 4px rgba(50, 145, 255, 0.24);
+  --focus: #f5f5f5;
+  --focus-ring: 0 0 0 3px rgba(245, 245, 245, 0.16);
+  --focus-ring-strong: 0 0 0 4px rgba(245, 245, 245, 0.22);
 
-  --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.4);
-  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.4);
-  --shadow-md: 0 4px 8px 0 rgba(0, 0, 0, 0.4), 0 1px 2px 0 rgba(0, 0, 0, 0.4);
-  --shadow-lg: 0 8px 24px 0 rgba(0, 0, 0, 0.5), 0 1px 2px 0 rgba(0, 0, 0, 0.4);
-  --shadow-xl: 0 32px 64px 0 rgba(0, 0, 0, 0.6), 0 2px 4px 0 rgba(0, 0, 0, 0.4);
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.45), 0 2px 6px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 2px 4px rgba(0, 0, 0, 0.5), 0 8px 20px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 4px 8px rgba(0, 0, 0, 0.5), 0 18px 40px rgba(0, 0, 0, 0.5);
+  --shadow-xl: 0 8px 16px rgba(0, 0, 0, 0.55), 0 40px 80px rgba(0, 0, 0, 0.6);
+
+  --shadow-raised: 5px 5px 14px rgba(0, 0, 0, 0.55), -5px -5px 14px rgba(255, 255, 255, 0.03);
+  --shadow-raised-sm: 3px 3px 8px rgba(0, 0, 0, 0.5), -3px -3px 8px rgba(255, 255, 255, 0.03);
+  --shadow-sunken: inset 3px 3px 8px rgba(0, 0, 0, 0.5), inset -3px -3px 8px rgba(255, 255, 255, 0.04);
 }

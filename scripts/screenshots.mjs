@@ -238,11 +238,15 @@ await send('Emulation.setDeviceMetricsOverride', {
 
 await send('Page.navigate', { url: `${baseUrl}/` });
 await new Promise((resolve) => setTimeout(resolve, 2500));
-await shot('01-sign-in');
+await shot('01-home');
+
+await send('Page.navigate', { url: `${baseUrl}/#/login` });
+await new Promise((resolve) => setTimeout(resolve, 2000));
+await shot('02-sign-in');
 
 await send('Page.navigate', { url: `${baseUrl}/#/signup` });
 await new Promise((resolve) => setTimeout(resolve, 1500));
-await shot('02-sign-up');
+await shot('02b-sign-up');
 
 const structure = await buildAcademicStructure();
 await signIn('faculty@veriqra.local', 'Demo!2026');

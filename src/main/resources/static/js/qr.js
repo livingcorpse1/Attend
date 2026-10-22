@@ -201,7 +201,7 @@ export function renderQr(payload, options = {}) {
       text: payload,
       width: size,
       height: size,
-      colorDark: '#0b1224',
+      colorDark: '#0d0d0d',
       colorLight: '#ffffff',
       correctLevel: window.QRCode.CorrectLevel.M
     });

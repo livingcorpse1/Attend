@@ -270,11 +270,20 @@ async function run() {
   await send('Page.enable');
   await send('Runtime.enable');
 
-  // The sign in screen.
-  await navigate(`${baseUrl}/`);
+  // The sign in screen. The root of the site is the home page.
+  await navigate(`${baseUrl}/#/login`);
   await waitFor('document.querySelector(".auth-card") !== null', 'the sign in screen');
   check('the sign in screen renders', await evaluate('document.querySelector(".auth-card h1").textContent'));
   check('the marketing panel renders', await evaluate('document.querySelector(".auth-aside") !== null'));
+
+  // The home page.
+  await navigate(`${baseUrl}/`);
+  await waitFor('document.querySelector(".home-title") !== null', 'the home page');
+  check('the home page renders the headline', await evaluate('document.querySelector(".home-title").textContent'));
+  check('the home page offers the two actions',
+    await evaluate('[...document.querySelectorAll(".home-actions a")].map((a) => a.textContent.trim()).join(",")'));
+  check('the home page lists the features',
+    await evaluate('document.querySelectorAll(".home-feature").length === 3'));
 
   // The sign up screen.
   await navigate(`${baseUrl}/#/signup`);

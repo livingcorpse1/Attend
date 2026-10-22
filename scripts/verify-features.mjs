@@ -186,9 +186,26 @@ async function run() {
 
   /* ------------------------------------------------------- the sign in and the shell */
 
-  await navigate(`${baseUrl}/`);
+  await navigate(`${baseUrl}/#/login`);
   await waitFor('document.querySelector(".auth-card") !== null', 'the sign in screen');
   check('the sign in screen renders', true);
+
+  // The home page of the site.
+  await navigate(`${baseUrl}/`);
+  await waitFor('document.querySelector(".home-title") !== null', 'the home page');
+  const home = await evaluate(`(() => ({
+    title: document.querySelector('.home-title').textContent.trim(),
+    actions: [...document.querySelectorAll('.home-actions a')].map((a) => a.textContent.trim()),
+    features: [...document.querySelectorAll('.home-feature h3')].map((h) => h.textContent.trim()),
+    links: [...document.querySelectorAll('.home-nav-links a')].map((a) => a.textContent.trim())
+  }))()`);
+  check('the home page says who the product is for', home.title === 'Identity. Verified.', home.title);
+  check('the home page offers the two actions',
+    home.actions.join(',') === 'Get Started,Explore Platform', home.actions.join(', '));
+  check('the home page explains the three features',
+    home.features.length === 3, home.features.join(', '));
+  check('the home page has the navigation',
+    home.links.join(',') === 'Features,Security,Sign In', home.links.join(', '));
 
   await signIn('student@veriqra.local', DEMO_PASSWORD);
   await navigate(`${baseUrl}/`);

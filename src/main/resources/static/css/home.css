@@ -1,0 +1,267 @@
+/*
+ * The home page.
+ *
+ * The page is one column of generous space: a thin bar at the top, a headline that
+ * carries the promise, two actions, and the features and the safeguards in two quiet
+ * blocks. There is no picture, because the type and the grey are enough.
+ */
+
+.home {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--background);
+  color: var(--text-primary);
+}
+
+/* The bar ----------------------------------------------------------------- */
+.home-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-6);
+  padding: var(--space-6) var(--space-10);
+  max-width: var(--content-max);
+  width: 100%;
+  margin: 0 auto;
+}
+
+.home-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-3);
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-tight);
+  color: var(--text-primary);
+  text-decoration: none;
+}
+
+.home-brand img {
+  border-radius: var(--radius-sm);
+}
+
+.home-nav-links {
+  display: flex;
+  align-items: center;
+  gap: var(--space-6);
+}
+
+.home-nav-links a {
+  color: var(--text-secondary);
+  font-size: var(--text-base);
+  font-weight: var(--weight-medium);
+  text-decoration: none;
+  transition: color var(--transition-fast);
+}
+
+.home-nav-links a:hover {
+  color: var(--text-primary);
+}
+
+.home-nav-links .button {
+  color: var(--background);
+}
+
+/* The hero ---------------------------------------------------------------- */
+.home-hero {
+  max-width: var(--content-max);
+  padding: var(--space-20) var(--space-10) var(--space-20);
+  margin: 0 auto;
+  width: 100%;
+}
+
+.home-hero > * {
+  max-width: 980px;
+}
+
+.home-eyebrow {
+  margin: 0 0 var(--space-5);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-wider);
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+
+.home-title {
+  margin: 0;
+  font-size: clamp(3rem, 8vw, 6rem);
+  font-weight: var(--weight-bold);
+  line-height: 0.98;
+  letter-spacing: -0.045em;
+  color: var(--text-primary);
+}
+
+.home-lead {
+  margin: var(--space-8) 0 0;
+  max-width: 620px;
+  font-size: var(--text-lg);
+  line-height: 1.55;
+  color: var(--text-secondary);
+}
+
+.home-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  margin-top: var(--space-10);
+}
+
+.home-actions .button {
+  min-width: 180px;
+}
+
+/* The blocks -------------------------------------------------------------- */
+.home-section {
+  max-width: var(--content-max);
+  width: 100%;
+  margin: 0 auto;
+  padding: var(--space-20) var(--space-10);
+  border-top: 1px solid var(--border-subtle);
+}
+
+.home-heading {
+  margin: 0;
+  font-size: clamp(1.75rem, 3.4vw, 2.5rem);
+  font-weight: var(--weight-semibold);
+  line-height: 1.15;
+  letter-spacing: -0.03em;
+}
+
+.home-features {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: var(--space-6);
+  margin-top: var(--space-10);
+}
+
+.home-feature {
+  background: var(--surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: var(--space-8);
+  box-shadow: var(--shadow-raised);
+  transition: transform var(--transition-base), box-shadow var(--transition-base);
+}
+
+.home-feature:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg);
+}
+
+.home-feature-glyph {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-md);
+  background: var(--surface-inset);
+  box-shadow: var(--shadow-sunken);
+  color: var(--text-primary);
+}
+
+.home-feature h3 {
+  margin: var(--space-6) 0 var(--space-3);
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-tight);
+}
+
+.home-feature p {
+  margin: 0;
+  font-size: var(--text-base);
+  line-height: 1.6;
+  color: var(--text-secondary);
+}
+
+.home-safeguards {
+  list-style: none;
+  margin: var(--space-10) 0 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+  gap: var(--space-5) var(--space-10);
+}
+
+.home-safeguards li {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-4);
+  font-size: var(--text-md);
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.home-tick {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  flex: none;
+  margin-top: 2px;
+  border-radius: var(--radius-pill);
+  background: var(--foreground);
+  color: var(--background);
+}
+
+/* The foot ---------------------------------------------------------------- */
+.home-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-6);
+  max-width: var(--content-max);
+  width: 100%;
+  margin: 0 auto;
+  padding: var(--space-10);
+  border-top: 1px solid var(--border-subtle);
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+
+.home-foot-muted {
+  color: var(--text-tertiary);
+}
+
+/* The narrow screens ------------------------------------------------------- */
+@media (max-width: 720px) {
+  .home-nav {
+    padding: var(--space-5) var(--space-6);
+    gap: var(--space-4);
+  }
+
+  .home-nav-links {
+    gap: var(--space-4);
+  }
+
+  .home-nav-links a:not(.button) {
+    display: none;
+  }
+
+  .home-hero {
+    padding: var(--space-16) var(--space-6) var(--space-12);
+  }
+
+  .home-hero > * {
+    max-width: none;
+  }
+
+  .home-section {
+    padding: var(--space-12) var(--space-6);
+  }
+
+  .home-foot {
+    padding: var(--space-8) var(--space-6);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home-feature {
+    transition: none;
+  }
+
+  .home-feature:hover {
+    transform: none;
+  }
+}

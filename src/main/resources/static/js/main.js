@@ -21,6 +21,7 @@ import {
 import { toast, viewSkeleton } from './ui.js';
 import { icon } from './icons.js';
 import { renderLogin, renderSignup } from './views/auth.js';
+import { renderHome } from './views/home.js';
 import {
   renderStudentAttendance,
   renderStudentDashboard,
@@ -140,6 +141,8 @@ async function refreshAccountThenGoHome() {
  * Gives the navigation to the router.
  */
 function registerRoutes() {
+  route('/', () => renderHome(root));
+  route('/home', () => renderHome(root));
   route('/login', () => renderAuthView('login'));
   route('/signup', () => renderAuthView('signup'));
 
@@ -196,8 +199,9 @@ function registerRoutes() {
   });
 
   setContainerProvider(({ path }) => {
-    // The sign in screens are rendered on their own, they do not use the shell.
-    if (path === '/login' || path === '/signup') {
+    // The sign in screens and the home page are rendered on their own, they do not use
+    // the shell.
+    if (path === '/login' || path === '/signup' || path === '/' || path === '/home') {
       return null;
     }
     return ensureShell();
@@ -205,12 +209,12 @@ function registerRoutes() {
 
   setNotFound(() => {
     const account = currentAccount();
-    navigate(account ? '/dashboard' : '/login', { replace: true });
+    navigate(account ? '/dashboard' : '/', { replace: true });
   });
 
   setGuard(async ({ path }) => {
     const account = currentAccount();
-    const isPublic = path === '/login' || path === '/signup';
+    const isPublic = path === '/login' || path === '/signup' || path === '/' || path === '/home';
 
     if (!account) {
       if (isPublic) {

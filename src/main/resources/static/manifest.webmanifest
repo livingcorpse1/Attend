@@ -2,7 +2,7 @@
   "name": "VeriQra · Verified Attendance",
   "short_name": "VeriQra",
   "description": "Class attendance with a rotating QR code and a server side face verification.",
-  "start_url": "/#/dashboard",
+  "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "display_override": ["standalone", "minimal-ui"],

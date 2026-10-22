@@ -1,9 +1,9 @@
 /*
- * Reusable interface components, in the Geist idiom.
+ * Reusable interface components.
  *
- * The rules: a flat surface, a hairline border, one accent, and three semantic colours
- * that only ever carry meaning. Controls are 32 pixels tall, inputs are 40, cards have
- * a 12 pixel radius and nothing is louder than it needs to be.
+ * The interface is monochromatic and soft. A surface is either raised out of the page
+ * or pressed into it, and the depth comes from a pair of shadows rather than from a
+ * colour. Nothing is louder than it needs to be.
  */
 
 /* Buttons ---------------------------------------------------------------- */
@@ -13,8 +13,8 @@
   align-items: center;
   justify-content: center;
   gap: var(--space-2);
-  height: 32px;
-  padding: 0 var(--space-3);
+  height: 36px;
+  padding: 0 var(--space-4);
   border-radius: var(--radius-sm);
   border: 1px solid transparent;
   font-size: var(--text-base);
@@ -24,7 +24,7 @@
   text-decoration: none;
   transition: background var(--transition-fast), border-color var(--transition-fast),
     color var(--transition-fast), opacity var(--transition-fast),
-    box-shadow var(--transition-fast);
+    box-shadow var(--transition-fast), transform var(--transition-fast);
 }
 
 .button:hover {
@@ -32,12 +32,12 @@
 }
 
 .button:active:not(:disabled) {
-  transform: translateY(0.5px);
+  transform: translateY(1px);
 }
 
 .button:disabled,
 .button[aria-disabled="true"] {
-  opacity: 0.5;
+  opacity: 0.45;
   cursor: not-allowed;
 }
 
@@ -53,22 +53,26 @@
 .button-primary {
   background: var(--foreground);
   color: var(--background);
+  box-shadow: var(--shadow-sm);
 }
 
 .button-primary:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--foreground) 88%, var(--background));
-}
-
-.button-secondary {
-  background: var(--background);
-  color: var(--text-primary);
-  border-color: var(--border);
+  background: color-mix(in srgb, var(--foreground) 86%, var(--background));
   box-shadow: var(--shadow-xs);
 }
 
+.button-secondary {
+  background: var(--surface-2);
+  color: var(--text-primary);
+  border-color: transparent;
+  box-shadow: var(--shadow-raised-sm);
+}
+
 .button-secondary:hover:not(:disabled) {
-  background: var(--surface-hover);
-  border-color: var(--border-strong);
+  background: var(--surface-2);
+  border-color: transparent;
+  box-shadow: var(--shadow-xs);
+  transform: translateY(1px);
 }
 
 .button-ghost {
@@ -83,7 +87,8 @@
 
 .button-danger {
   background: var(--danger);
-  color: #ffffff;
+  color: var(--background);
+  border-color: var(--danger-line);
 }
 
 .button-danger:hover:not(:disabled) {
@@ -91,9 +96,10 @@
 }
 
 .button-danger-secondary {
-  background: var(--background);
-  color: var(--danger);
+  background: transparent;
+  color: var(--danger-on-soft);
   border-color: var(--danger-line);
+  box-shadow: var(--shadow-xs);
 }
 
 .button-danger-secondary:hover:not(:disabled) {
@@ -106,15 +112,15 @@
 }
 
 .button-sm {
-  height: 24px;
-  padding: 0 var(--space-2);
+  height: 28px;
+  padding: 0 var(--space-3);
   font-size: var(--text-xs);
   gap: var(--space-1);
 }
 
 .button-lg {
-  height: 40px;
-  padding: 0 var(--space-4);
+  height: 46px;
+  padding: 0 var(--space-6);
   font-size: var(--text-md);
 }
 
@@ -169,10 +175,10 @@
 
 /* Cards ------------------------------------------------------------------ */
 .card {
-  background: var(--background);
-  border: 1px solid var(--border);
+  background: var(--surface);
+  border: 1px solid var(--border-subtle);
   border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-xs);
+  box-shadow: var(--shadow-raised);
   min-width: 0;
 }
 
@@ -236,14 +242,14 @@
 }
 
 .stat {
-  background: var(--background);
-  border: 1px solid var(--border);
+  background: var(--surface);
+  border: 1px solid var(--border-subtle);
   border-radius: var(--radius-lg);
   padding: var(--space-5);
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
-  box-shadow: var(--shadow-xs);
+  box-shadow: var(--shadow-raised);
 }
 
 /*
@@ -366,13 +372,14 @@
 .select,
 .textarea {
   width: 100%;
-  min-height: 40px;
-  padding: 0 var(--space-3);
-  border: 1px solid var(--border-strong);
+  min-height: 44px;
+  padding: 0 var(--space-4);
+  border: 1px solid var(--border);
   border-radius: var(--radius-sm);
-  background: var(--background);
+  background: var(--surface-inset);
   color: var(--text-primary);
   font-size: var(--text-base);
+  box-shadow: var(--shadow-sunken);
   transition: border-color var(--transition-fast), box-shadow var(--transition-fast),
     background var(--transition-fast);
 }
@@ -1124,7 +1131,7 @@ table.data th.numeric {
 }
 
 .camera-frame .overlay .reticle.is-locked {
-  border-color: #50e3c2;
+  border-color: var(--foreground);
   border-style: solid;
 }
 

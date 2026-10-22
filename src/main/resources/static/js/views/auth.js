@@ -43,7 +43,7 @@ export function authAside() {
       h('span.glyph', icon(point.glyph, { size: 16 })),
       h('div', [
         h('div.point-title', point.title),
-        h('p.text-sm', { style: { color: '#a1a1a1' } }, point.text)
+        h('p.text-sm', { style: { color: '#b5b5b5' } }, point.text)
       ])
     ])))
   ]);
