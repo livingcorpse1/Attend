@@ -36,6 +36,7 @@ public class AttendanceService {
     private final QrTokenService qrTokens;
     private final AppProperties properties;
     private final com.veriqra.app.service.timetable.TimetableService timetableService;
+    private final com.veriqra.app.service.LiveUpdates liveUpdates;
     private final SecureRandom random = new SecureRandom();
 
     public AttendanceService(AttendanceRepository attendance,
@@ -43,13 +44,15 @@ public class AttendanceService {
                              AuditRepository audit,
                              QrTokenService qrTokens,
                              AppProperties properties,
-                             com.veriqra.app.service.timetable.TimetableService timetableService) {
+                             com.veriqra.app.service.timetable.TimetableService timetableService,
+                             com.veriqra.app.service.LiveUpdates liveUpdates) {
         this.attendance = attendance;
         this.academic = academic;
         this.audit = audit;
         this.qrTokens = qrTokens;
         this.properties = properties;
         this.timetableService = timetableService;
+        this.liveUpdates = liveUpdates;
     }
 
     /**
@@ -69,6 +72,8 @@ public class AttendanceService {
         audit.record(facultyId, "SESSION_STARTED", "session=" + sessionId, "TEACHER_ACTION",
                 "Attendance session opened for " + slot.subjectCode() + " " + slot.section(), null, slot.subjectCode());
         log.info("Faculty {} opened attendance session {} for the lecture {}", facultyId, sessionId, slotId);
+        // The screens of the teacher are told that a session is running.
+        liveUpdates.publish(String.valueOf(facultyId), "sessions");
         return buildViews(List.of(attendance.findSession(sessionId).orElseThrow())).get(0);
     }
 
@@ -80,6 +85,7 @@ public class AttendanceService {
         attendance.closeSession(sessionId, now);
         audit.record(facultyId, "SESSION_CLOSED", "session=" + sessionId, "TEACHER_ACTION",
                 "Attendance session closed", null, "CLOSED");
+        liveUpdates.publish(String.valueOf(facultyId), "sessions");
         return buildViews(List.of(attendance.findSession(sessionId).orElse(before))).get(0);
     }
 
@@ -155,6 +161,10 @@ public class AttendanceService {
                 previous, status.name());
         log.info("Faculty {} changed attendance of student {} in session {} from {} to {}",
                 facultyId, studentId, sessionId, previous, status.name());
+
+        // The roster of the running session is up to date at once.
+        liveUpdates.publish(String.valueOf(facultyId), "roster");
+        liveUpdates.publish(String.valueOf(studentId), "attendance");
 
         return roster(facultyId, sessionId).stream()
                 .filter(entry -> entry.studentId() == studentId)

@@ -21,6 +21,7 @@ const SHELL_ASSETS = [
   '/js/api.js',
   '/js/dom.js',
   '/js/icons.js',
+  '/js/live.js',
   '/js/store.js',
   '/js/router.js',
   '/js/ui.js',

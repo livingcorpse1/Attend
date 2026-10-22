@@ -6,6 +6,7 @@ import { h, replaceChildren } from '../dom.js';
 import { api, cachedGet, invalidate, poll } from '../api.js';
 import { isCurrent, onDispose } from '../router.js';
 import { currentAccount } from '../store.js';
+import { onChange, watchAccount } from '../live.js';
 import {
   emptyState,
   formatDateTime,
@@ -135,9 +136,19 @@ export async function renderStudentDashboard(container, route) {
   paint(data);
 
   // The numbers move while the student is looking at them, so the screen reads them
-  // again on its own.
+  // again on its own, and the server pushes the change when an attendance is recorded.
   const stop = poll('/student/dashboard', { onRefresh: paint }, 30000);
-  onDispose(container, stop);
+  const stopWatching = watchAccount(currentAccount()?.id);
+  const stopListening = onChange('attendance', () => {
+    invalidate('/student/dashboard');
+    invalidate('/student/attendance');
+    cachedGet('/student/dashboard', { onRefresh: paint, ttl: 0 });
+  });
+  onDispose(container, () => {
+    stop();
+    stopWatching();
+    stopListening();
+  });
 }
 
 /* -------------------------------------------------------------------------- */

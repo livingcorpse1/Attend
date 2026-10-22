@@ -5,6 +5,8 @@
 import { h, replaceChildren } from '../dom.js';
 import { isCurrent, onDispose } from '../router.js';
 import { api, cachedGet, invalidate, poll } from '../api.js';
+import { onChange, watchAccount } from '../live.js';
+import { currentAccount } from '../store.js';
 import {
   confirmDialog,
   emptyState,
@@ -383,8 +385,23 @@ export async function renderFacultyAttendance(container, route) {
     timer = window.setInterval(refreshQr, 1000);
     rosterTimer = window.setInterval(refreshRoster, 3000);
 
+    // The server pushes the change, so the roster is up to date at once. The poll is
+    // only the safety net for a connection that broke.
+    const stopWatching = watchAccount(currentAccount()?.id);
+    const stopListening = onChange('roster', () => {
+      refreshRoster();
+    });
+    const stopSessions = onChange('sessions', () => {
+      invalidate('/faculty/sessions');
+    });
+
     // The router calls this when the teacher leaves the screen, so the polling stops.
-    onDispose(container, stop);
+    onDispose(container, () => {
+      stop();
+      stopWatching();
+      stopListening();
+      stopSessions();
+    });
   }
 }
 

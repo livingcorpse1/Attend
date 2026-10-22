@@ -72,6 +72,12 @@ The database is a few hundred milliseconds away, so the shape of the queries mat
 
 * The dashboard sends its four independent reads at the same time instead of one after
   the other. That alone took the screen from 3.2 seconds to 0.7.
+* The pool holds twelve connections. A dashboard takes four of them at the same time, and
+  the screens that watch for changes ask for more, so a pool of five ran out and the
+  screens waited for a connection that was never free.
+* The live channel pushes a change over a socket of this origin, so the roster of a
+  running session is up to date at once. The poll is still there, as the safety net for a
+  connection that breaks.
 * The list of sessions reads the classes and the present counts once for the whole list
   instead of once per session. That was the last N+1 and it cost 2.4 seconds.
 * The client keeps the last answer for every screen, refreshes it in the background and
@@ -178,7 +184,7 @@ the database is still reachable and that a sign in still works.
 * The browser smoke test passes 23 checks over the sign in, sign up, teacher and student
   screens with no console errors. It builds the subject, the class section, the lecture
   and the enrolment it needs through the teacher's own API, because nothing is seeded.
-* The browser check `scripts/verify-features.mjs` passes 38 checks, with the camera
+* The browser check `scripts/verify-features.mjs` passes 40 checks, with the camera
   driven by a fake device that plays a real portrait and a real classroom code:
   * the session survives a reload of the page, and it survives a restart of the server,
     because the sessions live in the database;
@@ -196,6 +202,8 @@ the database is still reachable and that a sign in still works.
   * the lectures of the calendar follow the dates when the arrows are used;
   * a session of a running lecture projects the rotating code, and ending it closes the
     session on the server and clears the screen;
+  * the live channel is open, so the server can push a change instead of the screen
+    having to wait for the next poll;
   * the dashboard keeps itself up to date, without a refresh.
 * The application starts against the local H2 instance, applies the migrations and
   answers the health probe. It also runs against Supabase, where the schema was applied

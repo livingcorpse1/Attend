@@ -7,6 +7,7 @@ import com.veriqra.app.repository.AcademicRepository;
 import com.veriqra.app.repository.AttendanceRepository;
 import com.veriqra.app.repository.BiometricRepository;
 import com.veriqra.app.security.ApiException;
+import com.veriqra.app.service.LiveUpdates;
 import com.veriqra.app.service.biometric.BiometricService;
 import com.veriqra.app.service.biometric.FaceImage;
 import org.slf4j.Logger;
@@ -43,19 +44,22 @@ public class StudentAttendanceService {
     private final QrTokenService qrTokens;
     private final BiometricService biometricService;
     private final AppProperties properties;
+    private final LiveUpdates liveUpdates;
 
     public StudentAttendanceService(AttendanceRepository attendance,
                                     AcademicRepository academic,
                                     BiometricRepository biometrics,
                                     QrTokenService qrTokens,
                                     BiometricService biometricService,
-                                    AppProperties properties) {
+                                    AppProperties properties,
+                                    LiveUpdates liveUpdates) {
         this.attendance = attendance;
         this.academic = academic;
         this.biometrics = biometrics;
         this.qrTokens = qrTokens;
         this.biometricService = biometricService;
         this.properties = properties;
+        this.liveUpdates = liveUpdates;
     }
 
     /**
@@ -163,6 +167,11 @@ public class StudentAttendanceService {
                 outcome.similarity(), outcome.livenessScore(),
                 AttendanceRepository.RecordMethod.FACE_VERIFIED, "QR_FACE", null);
         biometricService.consumeChallenge(ticket.challengeId());
+
+        // The teacher watches the room of the session, so the roster is up to date at
+        // once instead of at the next poll.
+        liveUpdates.publish(String.valueOf(session.facultyId()), "roster");
+        liveUpdates.publish(String.valueOf(studentId), "attendance");
 
         Optional<AttendanceRepository.RecordRow> record = attendance.findRecord(session.id(), studentId);
         log.info("Recorded attendance of student {} for session {} with match score {}",

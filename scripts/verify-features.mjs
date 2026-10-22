@@ -532,6 +532,14 @@ async function run() {
   } else {
     check('a session of a running lecture projects the rotating code', session.started);
 
+    // The live channel: the server pushes the change, so the roster is up to date at once.
+    const live = await evaluate(`(async () => {
+      const { state } = await import('/js/live.js');
+      await new Promise((r) => setTimeout(r, 1500));
+      return state();
+    })()`);
+    check('the live channel is open', live.open, JSON.stringify(live));
+
     // Ending the session has to close it on the server and clear the screen.
     const ended = await evaluate(`(async () => {
       const button = document.querySelector('#end');
