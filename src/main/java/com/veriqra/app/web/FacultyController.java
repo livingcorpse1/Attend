@@ -91,7 +91,12 @@ public class FacultyController {
 
         long sessions = subjects.stream().mapToLong(SubjectAttendanceView::sessions).sum();
         long present = subjects.stream().mapToLong(SubjectAttendanceView::attended).sum();
-        double percentage = sessions == 0 ? 0d : (present * 100d) / sessions;
+        // The rate is the share of the attendances that could have been recorded, so it
+        // can never be more than a hundred per cent.
+        long possible = subjects.stream()
+                .mapToLong(view -> view.sessions() * view.enrolled())
+                .sum();
+        double percentage = possible == 0 ? 0d : (present * 100d) / possible;
 
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("overallPercentage", Math.round(percentage * 10d) / 10d);

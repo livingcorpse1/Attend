@@ -44,7 +44,7 @@ public class ReportService {
     public List<SubjectAttendanceView> subjectAttendanceForStudent(long studentId) {
         return attendance.subjectAttendanceForStudent(studentId, 100).stream()
                 .map(view -> new SubjectAttendanceView(view.subjectCode(), view.subjectName(),
-                        view.sessions(), view.attended(), view.percentage()))
+                        view.sessions(), view.attended(), view.enrolled(), view.percentage()))
                 .toList();
     }
 
@@ -52,7 +52,7 @@ public class ReportService {
     public List<SubjectAttendanceView> subjectAttendanceForFaculty(long facultyId) {
         return attendance.subjectAttendanceForFaculty(facultyId, 100).stream()
                 .map(view -> new SubjectAttendanceView(view.subjectCode(), view.subjectName(),
-                        view.sessions(), view.attended(), view.percentage()))
+                        view.sessions(), view.attended(), view.enrolled(), view.percentage()))
                 .toList();
     }
 

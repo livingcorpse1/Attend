@@ -49,6 +49,12 @@ class AttendanceFlowIntegrationTest {
     @Autowired
     MockMvc mvc;
 
+    @Autowired
+    com.veriqra.app.service.report.ReportService reports;
+
+    @Autowired
+    com.veriqra.app.repository.UserRepository users;
+
     @MockitoBean
     FaceRecognitionService faceRecognition;
 
@@ -136,6 +142,40 @@ class AttendanceFlowIntegrationTest {
         mvc.perform(get("/api/student/attendance").session(studentSession))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", hasSize(1)));
+    }
+
+    @Test
+    void theAttendanceRateIsAShareOfWhatCouldHaveBeenRecorded() throws Exception {
+        long session = startSession();
+        stubSuccessfulFaceCheck();
+        enrollFace(studentSession);
+        String ticketId = scanForTicket(session, studentSession);
+        mvc.perform(multipartBuilder("/api/student/attendance/submit", "ticketId",
+                        ticketId, frame("f0.jpg"))
+                        .with(csrf()).session(studentSession))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.outcome").value("RECORDED"));
+
+        // The class holds two students and one session was held, so two attendances could
+        // have been recorded and one of them was. The teacher sees fifty per cent, and
+        // the student who was there sees a hundred.
+        mvc.perform(get("/api/faculty/reports/subjects").session(facultySession))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].sessions").value(1))
+                .andExpect(jsonPath("$[0].attended").value(1))
+                .andExpect(jsonPath("$[0].enrolled").value(2))
+                .andExpect(jsonPath("$[0].percentage").value(50.0));
+
+        // The rate of the student is read from the repository, because the dashboard
+        // reads its numbers on other connections, which do not see the rows of a test
+        // that is rolled back.
+        var forStudent = reports.subjectAttendanceForStudent(studentId());
+        assertThat(forStudent.stream().mapToDouble(view -> view.percentage()).sum(), is(100.0d));
+    }
+
+    /** The identifier of the student of the test. */
+    private long studentId() {
+        return users.findByEmail("student@veriqra.local").orElseThrow().id();
     }
 
     @Test

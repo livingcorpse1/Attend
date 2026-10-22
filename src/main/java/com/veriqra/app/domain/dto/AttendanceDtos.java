@@ -146,6 +146,7 @@ public final class AttendanceDtos {
             String subjectName,
             long sessions,
             long attended,
+            long enrolled,
             double percentage) {
     }
 

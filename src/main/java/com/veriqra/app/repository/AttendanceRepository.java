@@ -6,7 +6,9 @@ import org.springframework.stereotype.Repository;
 
 import java.sql.Timestamp;
 import java.time.Instant;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -380,7 +382,9 @@ public class AttendanceRepository {
     /** Counts sessions and present records for one student in one subject. */
     public SubjectAttendance subjectAttendanceForStudent(long studentId) {
         return db.queryForObject("""
-                select count(distinct x.id) as sessions, count(r.id) as attended
+                select count(distinct x.id) as sessions,
+                       sum(case when r.status = 'PRESENT' then 1 else 0 end) as attended,
+                       1 as enrolled
                   from enrollment e
                   join class_section c on c.id = e.class_id
                   join subject s on s.id = c.subject_id
@@ -389,13 +393,32 @@ public class AttendanceRepository {
                  where e.student_id = ?
                  group by s.id, s.code, s.name
                 """, (rs, rowNum) -> new SubjectAttendance(rs.getString("code"), rs.getString("name"),
-                rs.getLong("sessions"), rs.getLong("attended")), studentId);
+                rs.getLong("sessions"), rs.getLong("attended"), rs.getLong("enrolled")), studentId);
     }
 
     /** Aggregate attendance figures for one subject of one student. */
-    public record SubjectAttendance(String subjectCode, String subjectName, long sessions, long attended) {
+    public record SubjectAttendance(String subjectCode, String subjectName, long sessions, long attended,
+                                    long enrolled) {
+        /**
+         * The number of attendances that could have been recorded.
+         *
+         * <p>One session holds one attendance for every student in the class, so the
+         * denominator is the sessions times the students. For a student that is one, for
+         * a teacher it is the class.
+         */
+        public long possible() {
+            return sessions * enrolled;
+        }
+
+        /**
+         * The share of the attendance that was actually there.
+         *
+         * <p>It can never be more than a hundred per cent, because the denominator is
+         * the number of attendances that could have been recorded.
+         */
         public double percentage() {
-            return sessions == 0 ? 0d : (attended * 100d) / sessions;
+            long possible = possible();
+            return possible == 0 ? 0d : (attended * 100d) / possible;
         }
     }
 
@@ -403,7 +426,9 @@ public class AttendanceRepository {
     public List<SubjectAttendance> subjectAttendanceForStudent(long studentId, int limit) {
         return db.query("""
                 select s.code as subject_code, s.name as subject_name,
-                       count(distinct x.id) as sessions, count(r.id) as attended
+                       count(distinct x.id) as sessions,
+                       sum(case when r.status = 'PRESENT' then 1 else 0 end) as attended,
+                       1 as enrolled
                   from enrollment e
                   join class_section c on c.id = e.class_id
                   join subject s on s.id = c.subject_id
@@ -414,14 +439,16 @@ public class AttendanceRepository {
                  order by s.code
                  limit ?
                 """, (rs, rowNum) -> new SubjectAttendance(rs.getString("subject_code"), rs.getString("subject_name"),
-                rs.getLong("sessions"), rs.getLong("attended")), studentId, limit);
+                rs.getLong("sessions"), rs.getLong("attended"), rs.getLong("enrolled")), studentId, limit);
     }
 
     /** Per subject attendance totals for a faculty member. */
     public List<SubjectAttendance> subjectAttendanceForFaculty(long facultyId, int limit) {
+        Map<String, Long> enrolled = enrolledPerSubject(facultyId);
         return db.query("""
                 select s.code as subject_code, s.name as subject_name,
-                       count(distinct x.id) as sessions, count(r.id) as attended
+                       count(distinct x.id) as sessions,
+                       sum(case when r.status = 'PRESENT' then 1 else 0 end) as attended
                   from attendance_session x
                   join class_section c on c.id = x.class_id
                   join subject s on s.id = c.subject_id
@@ -431,7 +458,30 @@ public class AttendanceRepository {
                  order by s.code
                  limit ?
                 """, (rs, rowNum) -> new SubjectAttendance(rs.getString("subject_code"), rs.getString("subject_name"),
-                rs.getLong("sessions"), rs.getLong("attended")), facultyId, limit);
+                rs.getLong("sessions"), rs.getLong("attended"),
+                enrolled.getOrDefault(rs.getString("subject_code"), 0L)), facultyId, limit);
+    }
+
+    /**
+     * The number of students enrolled in every subject of a teacher.
+     *
+     * <p>One session holds one attendance for every student in the class, so this is the
+     * number of attendances that a session of the subject could have carried.
+     */
+    public Map<String, Long> enrolledPerSubject(long facultyId) {
+        Map<String, Long> counts = new HashMap<>();
+        db.query("""
+                select s.code as subject_code, count(*) as enrolled
+                  from enrollment e
+                  join class_section c on c.id = e.class_id
+                  join subject s on s.id = c.subject_id
+                 where s.faculty_id = ?
+                 group by s.id, s.code
+                """, (rs, rowNum) -> {
+            counts.put(rs.getString("subject_code"), rs.getLong("enrolled"));
+            return null;
+        }, facultyId);
+        return counts;
     }
 
     /** Students whose attendance in a subject falls below the threshold. */
@@ -439,9 +489,11 @@ public class AttendanceRepository {
         return db.query("""
                 select u.id as student_id, u.full_name as student_name, u.student_number,
                        s.code as subject_code, s.name as subject_name,
-                       count(distinct x.id) as sessions, count(r.id) as attended,
+                       count(distinct x.id) as sessions,
+                       sum(case when r.status = 'PRESENT' then 1 else 0 end) as attended,
                        case when count(distinct x.id) = 0 then 0
-                            else 100.0 * count(r.id) / count(distinct x.id) end as percentage
+                            else 100.0 * sum(case when r.status = 'PRESENT' then 1 else 0 end)
+                                 / count(distinct x.id) end as percentage
                   from enrollment e
                   join app_user u on u.id = e.student_id
                   join class_section c on c.id = e.class_id
@@ -451,7 +503,8 @@ public class AttendanceRepository {
                  where s.faculty_id = ?
                  group by u.id, u.full_name, u.student_number, s.id, s.code, s.name
                 having count(distinct x.id) > 0
-                   and 100.0 * count(r.id) / count(distinct x.id) < ?
+                   and 100.0 * sum(case when r.status = 'PRESENT' then 1 else 0 end)
+                       / count(distinct x.id) < ?
                  order by percentage asc, u.full_name
                 """, (rs, rowNum) -> new LowAttendance(rs.getLong("student_id"), rs.getString("student_name"),
                 rs.getString("student_number"), rs.getString("subject_code"), rs.getString("subject_name"),
