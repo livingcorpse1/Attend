@@ -23,7 +23,7 @@
 #>
 [CmdletBinding()]
 param(
-    [string]$Address = '',
+    [string[]]$Address = @(),
     [string]$StorePassword = ''
 )
 
@@ -35,13 +35,16 @@ if (-not $keytool) {
     throw 'keytool was not found. Install a JDK or add one to the path.'
 }
 
-if (-not $Address) {
-    $Address = (Get-NetIPAddress -AddressFamily IPv4 |
+if (-not $Address -or $Address.Count -eq 0) {
+    # Every address of the machine is taken, because the network hands them out by
+    # lease and the phone may be on any of them. The certificate is made again when
+    # the address changes, and then the phone has to take the new one.
+    $Address = @(Get-NetIPAddress -AddressFamily IPv4 |
         Where-Object { $_.IPAddress -notlike '127.*' -and $_.IPAddress -notlike '169.254.*' } |
-        Where-Object { $_.PrefixOrigin -eq 'Dhcp' } |
-        Select-Object -First 1 -ExpandProperty IPAddress)
+        Where-Object { $_.PrefixOrigin -eq 'Dhcp' -or $_.InterfaceAlias -notlike '*Ethernet 2*' } |
+        Select-Object -ExpandProperty IPAddress)
 }
-if (-not $Address) {
+if (-not $Address -or $Address.Count -eq 0) {
     throw 'No network address was found. Pass one with -Address.'
 }
 
@@ -78,6 +81,10 @@ function Invoke-Tool {
     return $output
 }
 
+# Every address the machine has is covered, so the phone reaches the site on any of
+# them.
+$subjectAltNames = (@($Address | ForEach-Object { "IP:$_" }) + @('DNS:localhost', 'IP:127.0.0.1')) -join ','
+
 Invoke-Tool @(
     '-genkeypair', '-alias', 'veriqra', '-keyalg', 'RSA', '-keysize', '2048', '-validity', '825',
     '-storetype', 'PKCS12', '-keystore', $store, '-storepass', $StorePassword, '-keypass', $StorePassword,
@@ -85,7 +92,7 @@ Invoke-Tool @(
     '-ext', 'BC=ca:true',
     '-ext', 'KU=digitalSignature,keyEncipherment,keyCertSign,cRLSign',
     '-ext', 'EKU=serverAuth',
-    '-ext', "SAN=IP:$Address,DNS:localhost,IP:127.0.0.1"
+    '-ext', "SAN=$subjectAltNames"
 ) | Out-Null
 
 Invoke-Tool @(
@@ -113,9 +120,14 @@ if (Test-Path -LiteralPath $envFile) {
 
 Write-Host ''
 Write-Host 'The key store and the certificate are ready.' -ForegroundColor Green
-Write-Host "  address   https://$Address`:8443"
+foreach ($one in $Address) {
+    Write-Host "  address   https://$one`:8443"
+}
 Write-Host "  key store $store"
 Write-Host "  install   $certificate  (copy this to the phone)"
+Write-Host ''
+Write-Host 'The addresses are handed out by lease. When they change, run this again and' -ForegroundColor DarkGray
+Write-Host 'take the new certificate on the phone.' -ForegroundColor DarkGray
 Write-Host ''
 Write-Host 'Start the application with:' -ForegroundColor Cyan
 Write-Host "  .\mvnw.cmd spring-boot:run -Dspring-boot.run.profiles=https" -ForegroundColor Cyan
