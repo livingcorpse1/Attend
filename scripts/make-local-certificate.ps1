@@ -10,6 +10,11 @@
     This script creates a self signed key store that covers the addresses of this
     machine, and exports the certificate so it can be installed on the phone.
 
+    The certificate carries the flag of a certificate authority, so the phone can hold
+    it as a trusted certificate. Without that flag the browser keeps the origin
+    untrusted even after the certificate is installed, and it then hands no camera to
+    the page.
+
     The key store is a development convenience. It is not in source control and it is
     not a substitute for a certificate from a real authority.
 
@@ -53,12 +58,40 @@ if (Test-Path -LiteralPath $store) {
     Remove-Item -LiteralPath $store -Force
 }
 
-& $keytool -genkeypair -alias veriqra -keyalg RSA -keysize 2048 -validity 825 -storetype PKCS12 `
-    -keystore $store -storepass $StorePassword -keypass $StorePassword `
-    -dname "CN=veriqra.local, OU=Attendance, O=VeriQra, L=Thane, ST=Maharashtra, C=IN" `
-    -ext "SAN=IP:$Address,DNS:localhost,IP:127.0.0.1" 2>&1 | Out-Null
+# Every extension is given on its own, because the tool reads one extension per flag.
+# The tool writes its progress to the error stream, so the error stream is put aside for
+# the call and the result is read from the exit code.
+function Invoke-Tool {
+    param([string[]]$Arguments)
+    $previous = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    try {
+        $output = & $keytool @Arguments 2>&1
+        $code = $LASTEXITCODE
+    }
+    finally {
+        $ErrorActionPreference = $previous
+    }
+    if ($code -ne 0) {
+        throw "The tool failed: $($output -join ' ')"
+    }
+    return $output
+}
 
-& $keytool -exportcert -alias veriqra -keystore $store -storepass $StorePassword -rfc -file $certificate 2>&1 | Out-Null
+Invoke-Tool @(
+    '-genkeypair', '-alias', 'veriqra', '-keyalg', 'RSA', '-keysize', '2048', '-validity', '825',
+    '-storetype', 'PKCS12', '-keystore', $store, '-storepass', $StorePassword, '-keypass', $StorePassword,
+    '-dname', 'CN=veriqra.local, OU=Attendance, O=VeriQra, L=Thane, ST=Maharashtra, C=IN',
+    '-ext', 'BC=ca:true',
+    '-ext', 'KU=digitalSignature,keyEncipherment,keyCertSign,cRLSign',
+    '-ext', 'EKU=serverAuth',
+    '-ext', "SAN=IP:$Address,DNS:localhost,IP:127.0.0.1"
+) | Out-Null
+
+Invoke-Tool @(
+    '-exportcert', '-alias', 'veriqra', '-keystore', $store, '-storepass', $StorePassword,
+    '-rfc', '-file', $certificate
+) | Out-Null
 
 # The password is not in source control. It is written next to the key store and read
 # from the environment when the application starts.

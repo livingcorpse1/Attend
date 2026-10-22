@@ -466,8 +466,37 @@ async function run() {
     !classes.includes('Enrol a student') && !classes.includes('Add a colleague')
     && !classes.includes('Add a class section'));
 
-  /* ------------------------------------------------------------------- the live session */
+  /* -------------------------------------------------------------- the calendar of a fortnight */
 
+  await evaluate('location.hash = "#/dashboard"');
+  await waitFor('document.querySelector(".calendar-day") !== null', 'the calendar');
+  const calendar = await evaluate(`(async () => {
+    const read = () => {
+      const chips = [...document.querySelectorAll('.calendar-chip')].map((chip) => {
+        const cell = chip.closest('.calendar-day');
+        return {
+          date: cell ? cell.querySelector('.calendar-date').textContent.trim() : null,
+          text: chip.textContent.trim()
+        };
+      });
+      const card = document.querySelector('.calendar').closest('.card');
+      const heading = card ? card.querySelector('.card-header h3') : null;
+      return { chips, label: heading ? heading.textContent.trim() : '' };
+    };
+    const before = read();
+    const arrow = [...document.querySelectorAll('.card-header .icon-button')].pop();
+    arrow.click();
+    await new Promise((r) => setTimeout(r, 500));
+    const after = read();
+    return { before, after };
+  })()`);
+  check('the lectures of the calendar follow the dates',
+    calendar.before.label !== calendar.after.label
+      && JSON.stringify(calendar.before.chips.map((c) => c.date))
+        !== JSON.stringify(calendar.after.chips.map((c) => c.date)),
+    `the dates of the lectures went from ${JSON.stringify(calendar.before.chips.map((c) => c.date))} to ${JSON.stringify(calendar.after.chips.map((c) => c.date))}`);
+
+  /* ------------------------------------------------------------------- the live session */
   await evaluate('location.hash = "#/attendance"');
   await waitFor('document.querySelector("#view .card") !== null', 'the attendance screen');
   const session = await evaluate(`(async () => {
@@ -490,8 +519,38 @@ async function run() {
   if (session.skipped) {
     console.log(`      the live session was not measured: ${session.skipped}`);
   } else {
-    check('a session of a running lecture projects the rotating code', session.started,
-      `${session.label} · stage ${session.stage} · ${session.text.replace(/\n/g, ' ').slice(0, 80)}`);
+    check('a session of a running lecture projects the rotating code', session.started);
+
+    // Ending the session has to close it on the server and clear the screen.
+    const ended = await evaluate(`(async () => {
+      const button = document.querySelector('#end');
+      if (!button) {
+        return { error: 'there is no end button' };
+      }
+      button.click();
+      await new Promise((r) => setTimeout(r, 700));
+      const dialog = document.querySelector('.modal');
+      if (!dialog) {
+        return { error: 'the question was not asked' };
+      }
+      const confirm = [...dialog.querySelectorAll('button')]
+        .find((b) => /end session/i.test(b.textContent));
+      if (!confirm) {
+        return { error: 'the dialog has no confirm button' };
+      }
+      confirm.click();
+      await new Promise((r) => setTimeout(r, 3000));
+      const bootstrap = await (await fetch('/api/auth/session')).json();
+      const headers = { 'Content-Type': 'application/json', 'X-XSRF-TOKEN': bootstrap.csrfToken };
+      const open = await (await fetch('/api/faculty/sessions?status=ACTIVE', { headers })).json();
+      return {
+        openSessions: open.length,
+        qrOnScreen: document.querySelector('.qr-stage') !== null
+      };
+    })()`);
+    check('ending a session closes it and clears the screen',
+      ended.error === undefined && ended.openSessions === 0 && !ended.qrOnScreen,
+      ended.error || `the server still has ${ended.openSessions} open session(s), the code is on the screen: ${ended.qrOnScreen}`);
   }
 
   /* ---------------------------------------------------------------------- the institution */

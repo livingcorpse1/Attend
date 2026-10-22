@@ -60,6 +60,28 @@ export class CameraSession {
 }
 
 /**
+ * Explains why the camera is not available.
+ *
+ * <p>The usual reason on a phone is that the address of the site is not trusted: the
+ * browser then does not treat the page as a secure origin and hands no camera to it,
+ * even when the certificate was accepted with "proceed anyway". The certificate of the
+ * college has to be installed on the device for that.
+ *
+ * @returns {string} The message to show.
+ */
+export function cameraUnavailableMessage() {
+  if (window.isSecureContext === false) {
+    return 'This address is not trusted by the browser, so the browser hands no camera to it. '
+      + 'Install the certificate of the college on this device (veriqra-certificate.cer, '
+      + 'Settings > Security > Install from storage on Android) and open the site again.';
+  }
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    return 'This browser cannot access the camera. Use a modern browser over HTTPS.';
+  }
+  return 'The camera is not available on this device.';
+}
+
+/**
  * Opens the camera.
  *
  * @param {HTMLVideoElement} video
@@ -69,7 +91,7 @@ export class CameraSession {
  */
 export async function openCamera(video, options = {}) {
   if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-    throw new Error('This browser cannot access the camera. Use a modern browser over HTTPS.');
+    throw new Error(cameraUnavailableMessage());
   }
   const facingMode = options.facingMode === false ? 'environment' : 'user';
   let stream;

@@ -6,6 +6,7 @@
  */
 
 import { h } from './dom.js';
+import { cameraUnavailableMessage } from './camera.js';
 
 /**
  * Waits until the scanner library is available.
@@ -83,7 +84,7 @@ export function scannerPanel() {
     }
     await waitForLibrary('jsQR');
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-      throw new Error('This browser cannot access the camera.');
+      throw new Error(cameraUnavailableMessage());
     }
     stream = await navigator.mediaDevices.getUserMedia({
       video: { facingMode: { ideal: 'environment' } },

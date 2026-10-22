@@ -178,7 +178,7 @@ the database is still reachable and that a sign in still works.
 * The browser smoke test passes 23 checks over the sign in, sign up, teacher and student
   screens with no console errors. It builds the subject, the class section, the lecture
   and the enrolment it needs through the teacher's own API, because nothing is seeded.
-* The browser check `scripts/verify-features.mjs` passes 34 checks, with the camera
+* The browser check `scripts/verify-features.mjs` passes 38 checks, with the camera
   driven by a fake device that plays a real portrait and a real classroom code:
   * the session survives a reload of the page, and it survives a restart of the server,
     because the sessions live in the database;
@@ -193,6 +193,9 @@ the database is still reachable and that a sign in still works.
   * a lecture that is added to the diary shows up at once, every lecture in the week
     grid sits on the line of its hour, and the notes of the tiles in a row stand on the
     same line;
+  * the lectures of the calendar follow the dates when the arrows are used;
+  * a session of a running lecture projects the rotating code, and ending it closes the
+    session on the server and clears the screen;
   * the dashboard keeps itself up to date, without a refresh.
 * The application starts against the local H2 instance, applies the migrations and
   answers the health probe. It also runs against Supabase, where the schema was applied

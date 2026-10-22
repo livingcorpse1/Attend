@@ -18,7 +18,10 @@ const SELLING_POINTS = [
  */
 export function authAside() {
   return h('aside.auth-aside', [
-    h('div.brand', [h('span.brand-mark', 'V'), h('span', 'VeriQra', h('small', 'Presence, verified'))]),
+    h('div.brand', [
+      h('img.brand-mark', { src: '/icons/logo.png', alt: '', width: '30', height: '30' }),
+      h('span', 'VeriQra', h('small', 'Presence, verified'))
+    ]),
     h('div.stack.stack-4', [
       h('h2', 'Attendance you can actually trust.'),
       h('p', 'VeriQra pairs a rotating classroom code with a face check that runs on the server, so every attendance record is backed by evidence.')
@@ -89,11 +92,12 @@ export async function renderLogin(container, onSignedIn) {
   ]);
 
   const card = h('div.auth-card', [
-    h('div.brand', [h('span.brand-mark', 'V'), h('span', 'VeriQra')]),
+    h('div.brand', [h('img.brand-mark', { src: '/icons/logo.png', alt: '', width: '30', height: '30' }), h('span', 'VeriQra')]),
     h('p.eyebrow', 'Welcome back'),
     h('h1', 'Sign in to continue'),
     h('p.lead', 'Use the account issued by your college.'),
     form,
+    insecureNote(),
     h('p.auth-switch', [
       'New student? ',
       h('a', { href: '#/signup', onClick: () => {} }, 'Create an account')
@@ -103,6 +107,23 @@ export async function renderLogin(container, onSignedIn) {
 
   container.replaceChildren(h('div.auth', [authAside(), h('main.auth-main', card)]));
   container.querySelector('#login-email')?.focus();
+}
+
+/**
+ * The note that appears when the browser does not trust the address of the site.
+ *
+ * <p>Such a page is not a secure origin, so the browser hands no camera to it and the
+ * face check and the code scanner cannot work.
+ */
+function insecureNote() {
+  if (window.isSecureContext !== false) {
+    return null;
+  }
+  return h('div.alert.alert-warning', [
+    h('span', 'This address is not trusted by the browser, so the camera is not handed over to it. '
+      + 'Install the certificate of the college (veriqra-certificate.cer) on this device and open '
+      + 'the site again.')
+  ]);
 }
 
 /**
@@ -231,11 +252,12 @@ export async function renderSignup(container, onRegistered) {
   ]);
 
   const card = h('div.auth-card', [
-    h('div.brand', [h('span.brand-mark', 'V'), h('span', 'VeriQra')]),
+    h('div.brand', [h('img.brand-mark', { src: '/icons/logo.png', alt: '', width: '30', height: '30' }), h('span', 'VeriQra')]),
     h('p.eyebrow', 'Student sign up'),
     h('h1', 'Create your account'),
     h('p.lead', 'One step, then a quick face check and you are ready.'),
     form,
+    insecureNote(),
     h('p.auth-switch', [
       'Already registered? ',
       h('a', { href: '#/login', onClick: () => {} }, 'Sign in instead')

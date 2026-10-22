@@ -72,6 +72,10 @@ export function lecturesOn(slots, dayOfWeek) {
  * <p>Two rows of seven days. The rows follow each other week by week, so the arrows
  * move a whole week and the teacher always sees what is coming.
  *
+ * <p>A lecture of the timetable is a weekly pattern, so it is shown on the day it next
+ * falls on. The days that are already past stay empty, and the lecture moves with the
+ * date when the arrows are used.
+ *
  * @param {object} options
  * @param {Array} options.slots The lectures of the recurring weekly pattern.
  * @param {Function} [options.onSlotClick] Called with a lecture when one is clicked.
@@ -83,6 +87,15 @@ export function createCalendar({ slots, onSlotClick }) {
 
   const label = h('h3');
   const grid = h('div.calendar');
+
+  const today = new Date();
+  const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  const todayWeekday = todayStart.getDay() === 0 ? SUNDAY : todayStart.getDay();
+
+  /**
+   * The day of the next occurrence of a weekday, counted from today.
+   */
+  const daysUntil = (dayOfWeek) => (dayOfWeek - todayWeekday + 7) % 7;
 
   const paint = () => {
     const first = weekStart;
@@ -96,7 +109,6 @@ export function createCalendar({ slots, onSlotClick }) {
     // previous fortnight behind and the rows would pile up.
     grid.replaceChildren();
 
-    const today = new Date();
     for (let day = MONDAY; day <= SUNDAY; day += 1) {
       grid.append(h('div.calendar-head', weekdayShort(day)));
     }
@@ -104,8 +116,12 @@ export function createCalendar({ slots, onSlotClick }) {
     for (let week = 0; week < 2; week += 1) {
       for (let day = MONDAY; day <= SUNDAY; day += 1) {
         const date = dateOfWeekday(addDays(weekStart, week * 7), day);
-        const isToday = date.getTime() === new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime();
-        const dayLectures = lecturesOn(slots, day);
+        const isToday = date.getTime() === todayStart.getTime();
+        // A lecture is shown on the day it next falls on, so it follows the date.
+        const nextOccurrence = addDays(todayStart, daysUntil(day));
+        const dayLectures = nextOccurrence.getTime() === date.getTime()
+          ? lecturesOn(slots, day)
+          : [];
 
         const cell = h(`div.calendar-day${isToday ? '.is-today' : ''}`);
         cell.append(h('div.calendar-date', [
@@ -152,7 +168,7 @@ export function createCalendar({ slots, onSlotClick }) {
     }
   }, '›');
 
-  const today = h('button.button.button-secondary.button-sm', {
+  const todayButton = h('button.button.button-secondary.button-sm', {
     type: 'button',
     onClick: () => {
       weekStart = mondayOf(new Date());
@@ -165,8 +181,8 @@ export function createCalendar({ slots, onSlotClick }) {
   root.append(
     h('div.card-header', [
       h('div', [label, h('p.text-xs.text-subtle', { style: { marginTop: '2px' } },
-        'Your teaching week, repeated across the next fortnight')]),
-      h('div.row.gap-2', [today, previous, next])
+        'Your teaching week, the next two weeks')]),
+      h('div.row.gap-2', [todayButton, previous, next])
     ]),
     grid
   );

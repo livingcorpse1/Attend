@@ -122,9 +122,23 @@ export async function renderFacultyAttendance(container, route) {
     return;
   }
   const sessionArea = h('div');
+  // The sessions of the teacher, so a lecture can say whether its attendance is running.
+  let openSessions = sessions.slice();
+  // The session that is shown on the right.
+  let shown = null;
 
-  const resume = async (session) => {
+  const resume = (session) => {
+    shown = session;
     renderSession(session);
+  };
+
+  /**
+   * The screen without a running session.
+   */
+  const showNothing = () => {
+    shown = null;
+    replaceChildren(sessionArea, h('div.card.card-pad', emptyState(
+      'No session is running. Start one to project the classroom code.', '◉')));
   };
 
   /**
@@ -139,7 +153,9 @@ export async function renderFacultyAttendance(container, route) {
       invalidate('/faculty/dashboard');
       invalidate('/faculty/schedule');
       toast(`Attendance started for ${lecture.subjectCode} · ${lecture.section}.`, 'success');
-      await resume(session);
+      openSessions = [session, ...openSessions.filter((entry) => entry.id !== session.id)];
+      paintLectures(lectures);
+      resume(session);
     } catch (failure) {
       toast(failure.message, 'error');
       button.disabled = false;
@@ -147,9 +163,25 @@ export async function renderFacultyAttendance(container, route) {
   };
 
   /**
-   * One lecture of the day.
+   * One lecture of the day, with the state of its attendance.
    */
   const lectureRow = (lecture) => {
+    const running = openSessions.find((entry) => Number(entry.classId) === Number(lecture.classId));
+    if (running) {
+      const open = h('button.button.button-secondary.button-sm', { type: 'button' }, 'Attendance is running');
+      open.onclick = () => resume(running);
+      return h('div.lecture-row', [
+        h('div.stack.stack-1', [
+          h('strong', `${lecture.subjectCode} · ${lecture.subjectName}`),
+          h('span.text-sm.text-muted', `${lecture.section} · ${lecture.room} · ${lecture.starts} – ${lecture.ends}`)
+        ]),
+        h('div.lecture-action', [
+          h('span.badge.badge-success', 'Live'),
+          open
+        ])
+      ]);
+    }
+
     const button = h('button.button.button-primary', { type: 'button' }, 'Start attendance');
     button.disabled = !lecture.open;
     button.onclick = () => start(lecture, button);
@@ -171,7 +203,8 @@ export async function renderFacultyAttendance(container, route) {
       h('span.text-xs.text-muted', 'Attendance follows the timetable')
     ]),
     h('div.card-body.stack.stack-3', lectures.length === 0
-      ? [emptyState('You have no lectures scheduled today, so there is no attendance to take.', '▤')]
+      ? [emptyState('You have no lectures scheduled today, so there is no attendance to take.', '▤')
+      ]
       : lectures.map(lectureRow))
   ]);
 
@@ -200,10 +233,9 @@ export async function renderFacultyAttendance(container, route) {
   ]));
 
   if (sessions.length > 0) {
-    await resume(sessions[0]);
+    resume(sessions[0]);
   } else {
-    replaceChildren(sessionArea, h('div.card.card-pad', emptyState(
-      'No session is running. Start one to project the classroom code.', '◉')));
+    showNothing();
   }
 
   // The lectures of the day are read again, so a teacher who opens the screen before
@@ -296,13 +328,26 @@ export async function renderFacultyAttendance(container, route) {
       });
       if (!confirmed) {
         return;
+      }      stop();
+      endButton.disabled = true;
+      try {
+        await api.post(`/faculty/sessions/${session.id}/close`);
+      } catch (failure) {
+        toast(failure.message, 'error');
+        endButton.disabled = false;
+        return;
       }
-      stop();
-      await api.post(`/faculty/sessions/${session.id}/close`);
       invalidate('/faculty/sessions');
       invalidate('/faculty/dashboard');
       toast('The session has been closed.', 'success');
-      await renderFacultyAttendance(container, container.dataset.route);
+
+      // The session is gone, so the screen says so. It does not fall back to an older
+      // session, because that would look as if the code was still running.
+      openSessions = openSessions.filter((entry) => entry.id !== session.id);
+      showNothing();
+      const fresh = await cachedGet('/faculty/sessions', { params: { status: 'ACTIVE' } });
+      openSessions = fresh;
+      paintLectures(lectures);
     };
 
     replaceChildren(sessionArea, h('div.stack.stack-5', [
