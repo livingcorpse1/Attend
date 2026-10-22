@@ -24,6 +24,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
@@ -341,6 +342,52 @@ class AttendanceFlowIntegrationTest {
     }
 
     /* ------------------------------------------------------------------ helpers */
+
+    @Test
+    void aTeacherCanEnrolAndRemoveAStudentOfTheirOwnClass() throws Exception {
+        // The enrolment of the setup has to be there, and the student has to be able to
+        // leave the class again.
+        MvcResult roster = mvc.perform(get("/api/faculty/structure").session(facultySession))
+                .andExpect(status().isOk())
+                .andReturn();
+        List<Object> classes = com.jayway.jsonpath.JsonPath.read(
+                roster.getResponse().getContentAsString(), "$.classes");
+        long enrolled = 0;
+        for (Object entry : classes) {
+            @SuppressWarnings("unchecked")
+            java.util.Map<String, Object> row = (java.util.Map<String, Object>) entry;
+            if (((Number) row.get("id")).longValue() == classId) {
+                enrolled = ((Number) row.get("enrolled")).longValue();
+            }
+        }
+        assertThat(enrolled, is(2L));
+    }
+
+    @Test
+    void aTeacherCanRemoveAClassSectionThatHasNoSessions() throws Exception {
+        long subject = TestFixtures.createSubject(mvc, facultySession, "AT102", "Subject To Remove");
+        long removable = TestFixtures.createClass(mvc, facultySession, subject, "A", "Room 9");
+
+        mvc.perform(delete("/api/faculty/classes/" + removable).with(csrf()).session(facultySession))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("removed"));
+
+        mvc.perform(delete("/api/faculty/subjects/" + subject).with(csrf()).session(facultySession))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void aTeacherCannotRemoveAClassSectionOfAnotherTeacher() throws Exception {
+        String colleaguePassword = TestFixtures.addTeacher(mvc, facultySession, "colleague@veriqra.local",
+                "Prof. Anand Iyer");
+        MockHttpSession colleague = login("colleague@veriqra.local", colleaguePassword);
+        long subject = TestFixtures.createSubject(mvc, colleague, "AT103", "Subject Of The Colleague");
+        long otherClass = TestFixtures.createClass(mvc, colleague, subject, "A", "Room 10");
+
+        mvc.perform(delete("/api/faculty/classes/" + otherClass).with(csrf()).session(facultySession))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("NOT_OWNER"));
+    }
 
     private void stubSuccessfulFaceCheck() {
         when(faceRecognition.isAvailable()).thenReturn(true);

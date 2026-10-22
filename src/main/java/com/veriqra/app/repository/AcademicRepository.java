@@ -268,9 +268,13 @@ public class AcademicRepository {
                 Time.valueOf(ends), Time.valueOf(starts), excludeId, excludeId);
     }
 
+    /** Removes the enrolments of a class section. */
+    public void unenrolAll(long classId) {
+        db.update("delete from enrollment where class_id = ?", classId);
+    }
+
     /** Enrolled students for a class section. */
-    public List<Enrolment> enrolmentsForClass(long classId) {
-        return db.query("""
+    public List<Enrolment> enrolmentsForClass(long classId) {        return db.query("""
                 select e.student_id, u.full_name as student_name, u.student_number,
                        e.class_id, c.name as section, s.code as subject_code, s.name as subject_name
                   from enrollment e

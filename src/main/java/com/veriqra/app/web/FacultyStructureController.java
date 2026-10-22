@@ -217,7 +217,7 @@ public class FacultyStructureController {
         long facultyId = currentAccount.id(authentication);
         AcademicRepository.ClassView classView = academic.findClass(id)
                 .orElseThrow(() -> ApiException.notFound("CLASS_NOT_FOUND", "That class section does not exist."));
-        if (!academic.facultyTeaches(facultyId, classView.subjectId())) {
+        if (!academic.ownsSubject(facultyId, classView.subjectId())) {
             throw ApiException.forbidden("NOT_OWNER", "That class section belongs to another teacher.");
         }
         if (!attendance.sessionsForClass(id).isEmpty()) {
@@ -225,6 +225,8 @@ public class FacultyStructureController {
                     "The class section has attendance sessions. Those are a record of what happened "
                             + "and are not removed with the class.");
         }
+        // The students of a class section go with it.
+        academic.unenrolAll(id);
         academic.deleteClass(id);
         audit.record(facultyId, "CLASS_REMOVED", "class=" + id, "TEACHER_ACTION",
                 "Class section removed", classView.section(), null);
@@ -238,7 +240,7 @@ public class FacultyStructureController {
         long facultyId = currentAccount.id(authentication);
         AcademicRepository.ClassView classView = academic.findClass(classId)
                 .orElseThrow(() -> ApiException.notFound("CLASS_NOT_FOUND", "That class section does not exist."));
-        if (!academic.facultyTeaches(facultyId, classView.subjectId())) {
+        if (!academic.ownsSubject(facultyId, classView.subjectId())) {
             throw ApiException.forbidden("NOT_OWNER", "That class section belongs to another teacher.");
         }
         var student = users.findByEmail(email.trim().toLowerCase(Locale.ROOT))
@@ -262,7 +264,7 @@ public class FacultyStructureController {
         long facultyId = currentAccount.id(authentication);
         AcademicRepository.ClassView classView = academic.findClass(classId)
                 .orElseThrow(() -> ApiException.notFound("CLASS_NOT_FOUND", "That class section does not exist."));
-        if (!academic.facultyTeaches(facultyId, classView.subjectId())) {
+        if (!academic.ownsSubject(facultyId, classView.subjectId())) {
             throw ApiException.forbidden("NOT_OWNER", "That class section belongs to another teacher.");
         }
         academic.unenrol(studentId, classId);
