@@ -4,7 +4,7 @@
 
 import { h, formValues } from '../dom.js';
 import { api } from '../api.js';
-import { toast } from '../ui.js';
+import { openModal, toast } from '../ui.js';
 import { icon } from '../icons.js';
 import { consentVersion, demoAccounts, demoMode } from '../store.js';
 
@@ -50,12 +50,14 @@ export function authAside() {
 }
 
 /**
- * Renders the sign in screen.
+ * The card of the sign in form.
  *
- * @param {HTMLElement} container
- * @param {(account: object) => void} onSignedIn
+ * @param {object} options
+ * @param {(account: object) => void} options.onSignedIn Called after a successful sign in.
+ * @param {() => void} options.onSwitch Called when the person wants the other form.
+ * @returns {HTMLElement}
  */
-export async function renderLogin(container, onSignedIn) {
+function loginCard({ onSignedIn, onSwitch }) {
   const error = h('div');
   const submit = h('button.button.button-primary.button-block.button-lg', { type: 'submit' }, 'Sign in');
 
@@ -100,7 +102,7 @@ export async function renderLogin(container, onSignedIn) {
     submit
   ]);
 
-  const card = h('div.auth-card', [
+  return h('div.auth-card', [
     h('div.brand', [h('img.brand-mark', { src: '/icons/logo.png', alt: '', width: '30', height: '30' }), h('span', 'VeriQra')]),
     h('p.eyebrow', 'Welcome back'),
     h('h1', 'Sign in to continue'),
@@ -109,13 +111,56 @@ export async function renderLogin(container, onSignedIn) {
     insecureNote(),
     h('p.auth-switch', [
       'New student? ',
-      h('a', { href: '#/signup' }, 'Create an account')
+      h('a', {
+        href: '#/signup',
+        onClick: (event) => {
+          event.preventDefault();
+          onSwitch();
+        }
+      }, 'Create an account')
     ]),
     demoHint()
   ]);
+}
 
-  container.replaceChildren(h('div.auth', [authAside(), h('main.auth-main', card)]));
-  container.querySelector('#login-email')?.focus();
+/**
+ * Opens the sign in or the sign up as a dialog over the page.
+ *
+ * <p>The person never leaves the page they were reading. The dialog carries the same
+ * split as the sign in screen: the black panel that explains the product on the left and
+ * the form on the right. The two forms swap places inside the dialog, so the page behind
+ * it stays as it was.
+ *
+ * @param {'login'|'signup'} mode
+ * @returns {Promise<object|undefined>} The account of the person who signed in, or nothing
+ *   when the dialog was closed.
+ */
+export async function openAuthDialog(mode = 'login') {
+  let outcome;
+  do {
+    outcome = await openModal({
+      wide: true,
+      title: mode === 'signup' ? 'Create your account' : 'Sign in',
+      body: (ctx) => h('div.auth.auth-in-dialog', [
+        authAside(),
+        h('main.auth-main', mode === 'signup'
+          ? signupCard({
+            onRegistered: (account) => ctx.close(account),
+            onSwitch: () => ctx.close('login')
+          })
+          : loginCard({
+            onSignedIn: (account) => ctx.close(account),
+            onSwitch: () => ctx.close('signup')
+          }))
+      ])
+    });
+    if (outcome === 'signup') {
+      mode = 'signup';
+    } else if (outcome === 'login') {
+      mode = 'login';
+    }
+  } while (outcome === 'signup' || outcome === 'login');
+  return outcome;
 }
 
 /**
@@ -180,28 +225,37 @@ function replaceIcon(node, name) {
 
 /**
  * Shows the demonstration accounts, but only when they exist.
+ *
+ * <p>Only a few are named, so the dialog keeps its height, and the rest are counted.
  */
-function demoHint() {
+function demoHint(limit = 4) {
   if (!demoMode()) {
     return null;
   }
-  const accounts = demoAccounts();
-  if (accounts.length === 0) {
+  const all = demoAccounts();
+  if (all.length === 0) {
     return null;
   }
+  const accounts = all.slice(0, limit);
+  const rest = all.length - accounts.length;
   return h('div.demo-note', [
     h('strong', 'Demonstration accounts'),
-    h('div.demo-accounts', accounts.map((entry) => h('span.demo-account', entry)))
+    h('div.demo-accounts', [
+      ...accounts.map((entry) => h('span.demo-account', entry)),
+      rest > 0 ? h('span.demo-account', `+${rest} more`) : null
+    ])
   ]);
 }
 
 /**
- * Renders the sign up screen.
+ * The card of the sign up form.
  *
- * @param {HTMLElement} container
- * @param {(account: object) => void} onRegistered
+ * @param {object} options
+ * @param {(account: object) => void} options.onRegistered Called after the account is made.
+ * @param {() => void} options.onSwitch Called when the person wants the other form.
+ * @returns {HTMLElement}
  */
-export async function renderSignup(container, onRegistered) {
+function signupCard({ onRegistered, onSwitch }) {
   const error = h('div');
   const submit = h('button.button.button-primary.button-block.button-lg', { type: 'submit' }, 'Create account');
 
@@ -295,7 +349,7 @@ export async function renderSignup(container, onRegistered) {
     submit
   ]);
 
-  const card = h('div.auth-card', [
+  return h('div.auth-card', [
     h('div.brand', [h('img.brand-mark', { src: '/icons/logo.png', alt: '', width: '30', height: '30' }), h('span', 'VeriQra')]),
     h('p.eyebrow', 'Student sign up'),
     h('h1', 'Create your account'),
@@ -304,10 +358,13 @@ export async function renderSignup(container, onRegistered) {
     insecureNote(),
     h('p.auth-switch', [
       'Already registered? ',
-      h('a', { href: '#/login' }, 'Sign in instead')
+      h('a', {
+        href: '#/login',
+        onClick: (event) => {
+          event.preventDefault();
+          onSwitch();
+        }
+      }, 'Sign in instead')
     ])
   ]);
-
-  container.replaceChildren(h('div.auth', [authAside(), h('main.auth-main', card)]));
-  container.querySelector('#signup-name')?.focus();
 }

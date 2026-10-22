@@ -163,14 +163,14 @@ function sessionCard() {
     button.disabled = true;
     try {
       await api.post('/auth/logout');
-      // The account is gone, so the shell is torn down and the sign in screen comes back.
+      // The account is gone, so the shell is torn down and the home page comes back.
       const { setState } = await import('../store.js');
       setState({ account: null });
       const root = document.getElementById('app');
       if (root) {
         root.replaceChildren();
       }
-      navigate('/login', { replace: true });
+      navigate('/', { replace: true });
     } catch (failure) {
       button.disabled = false;
       toast(failure.message, 'error');

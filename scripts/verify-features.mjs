@@ -207,10 +207,76 @@ async function run() {
   check('the home page has the navigation',
     home.links.join(',') === 'Features,Security,Sign In', home.links.join(', '));
 
+  // The sign in opens over the page, so the reader does not lose the home page.
+  const dialog = await evaluate(`(async () => {
+    document.querySelector('.home-nav-links a.button').click();
+    await new Promise((r) => setTimeout(r, 700));
+    return {
+      hash: location.hash,
+      modal: document.querySelector('.modal') !== null,
+      card: document.querySelector('.modal .auth-card') !== null,
+      title: (document.querySelector('.modal .auth-card h1') || {}).textContent,
+      behind: document.querySelector('.home-title') !== null
+    };
+  })()`);
+  check('the sign in opens as a dialog over the home page',
+    dialog.modal && dialog.card && dialog.behind && (dialog.hash === '' || dialog.hash === '#/'),
+    JSON.stringify(dialog));
+
+  // The dialog carries both forms.
+  const forms = await evaluate(`(() => {
+    const link = document.querySelector('.modal .auth-switch a');
+    link.click();
+    return true;
+  })()`);
+  await waitFor('document.querySelector(".modal .auth-card h1") && '
+    + 'document.querySelector(".modal .auth-card h1").textContent === "Create your account"',
+  'the sign up dialog');
+  const signUp = await evaluate(`(() => ({
+    title: document.querySelector('.modal .auth-card h1').textContent,
+    fields: [...document.querySelectorAll('.modal .auth-card input')].map((i) => i.name),
+    switch: document.querySelector('.modal .auth-switch a').textContent
+  }))()`);
+  check('the dialog carries the sign up as well',
+    signUp.title === 'Create your account' && signUp.fields.includes('studentNumber')
+    && signUp.switch === 'Sign in instead', JSON.stringify(signUp));
+
+  // The dialog can be closed without signing in.
+  await evaluate('document.querySelector(".modal .icon-button").click()');
+  await new Promise((resolve) => setTimeout(resolve, 400));
+  check('the dialog closes without signing in',
+    await evaluate('document.querySelector(".modal") === null'));
+
   await signIn('student@veriqra.local', DEMO_PASSWORD);
   await navigate(`${baseUrl}/`);
   await waitFor('document.querySelector(".shell") !== null', 'the student shell');
   check('the sign in puts the student in the workspace', true);
+
+  // The sign out brings the person back to the home page, not to a sign in screen.
+  await evaluate('location.hash = "#/profile"');
+  await waitFor('location.hash === "#/profile" && document.querySelector("#view .card") !== null',
+    'the profile of the student');
+  await waitFor('[...document.querySelectorAll("#view button")]'
+    + '.some((b) => b.textContent.trim() === "Sign out")', 'the sign out button');
+  const signedOut = await evaluate(`(async () => {
+    const button = [...document.querySelectorAll('#view button')].find((b) => b.textContent.trim() === 'Sign out');
+    button.click();
+    await new Promise((r) => setTimeout(r, 1500));
+    return {
+      hash: location.hash,
+      home: document.querySelector('.home-title') !== null,
+      shell: document.querySelector('.shell') !== null,
+      dialog: document.querySelector('.modal') !== null
+    };
+  })()`);
+  check('the sign out brings the person back to the home page',
+    signedOut.home && !signedOut.shell && !signedOut.dialog
+    && (signedOut.hash === '' || signedOut.hash === '#/'), JSON.stringify(signedOut));
+
+  // The session is signed in again for the rest of the checks.
+  await signIn('student@veriqra.local', DEMO_PASSWORD);
+  await navigate(`${baseUrl}/`);
+  await waitFor('document.querySelector(".shell") !== null', 'the student shell');
 
   // The session has to survive a reload.
   await send('Page.reload');

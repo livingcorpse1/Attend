@@ -41,8 +41,11 @@ const SAFEGUARDS = [
  * Renders the home page.
  *
  * @param {HTMLElement} container
+ * @param {object} [options]
+ * @param {() => void} [options.onSignIn] Called when the reader asks to sign in.
+ * @param {() => void} [options.onSignUp] Called when the reader asks to make an account.
  */
-export function renderHome(container) {
+export function renderHome(container, { onSignIn, onSignUp } = {}) {
   // The links to the sections scroll to them. The address of the page stays on the home
   // page, so a reload brings the reader back to the top and not to a half read page.
   const toSection = (id) => (event) => {
@@ -53,6 +56,15 @@ export function renderHome(container) {
     }
   };
 
+  // The sign in opens over the page, so the reader does not lose the place they are in.
+  const opensDialog = (event, action) => {
+    if (!action) {
+      return;
+    }
+    event.preventDefault();
+    action();
+  };
+
   const header = h('header.home-nav', [
     h('a.home-brand', { href: '#/' }, [
       h('img', { src: '/icons/logo.png', alt: '', width: '28', height: '28' }),
@@ -61,7 +73,10 @@ export function renderHome(container) {
     h('nav.home-nav-links', [
       h('a', { href: '#features', onClick: toSection('features') }, 'Features'),
       h('a', { href: '#security', onClick: toSection('security') }, 'Security'),
-      h('a.button.button-primary.button-sm', { href: '#/login' }, 'Sign In')
+      h('a.button.button-primary.button-sm', {
+        href: '#/login',
+        onClick: (event) => opensDialog(event, onSignIn)
+      }, 'Sign In')
     ])
   ]);
 
@@ -71,7 +86,10 @@ export function renderHome(container) {
     h('p.home-lead', 'Attendance that cannot be faked, built on a classroom code that changes '
       + 'every second and a face check that runs on the server.'),
     h('div.home-actions', [
-      h('a.button.button-primary.button-lg', { href: '#/signup' }, 'Get Started'),
+      h('a.button.button-primary.button-lg', {
+        href: '#/signup',
+        onClick: (event) => opensDialog(event, onSignUp)
+      }, 'Get Started'),
       h('a.button.button-secondary.button-lg', { href: '#features', onClick: toSection('features') },
         'Explore Platform')
     ])

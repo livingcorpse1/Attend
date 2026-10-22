@@ -20,7 +20,7 @@ import {
 } from './router.js';
 import { toast, viewSkeleton } from './ui.js';
 import { icon } from './icons.js';
-import { renderLogin, renderSignup } from './views/auth.js';
+import { openAuthDialog } from './views/auth.js';
 import { renderHome } from './views/home.js';
 import {
   renderStudentAttendance,
@@ -124,8 +124,9 @@ function watchForALostSession() {
   addEventListener('veriqra:session-lost', () => {
     setState({ account: null });
     replaceChildren(root);
-    navigate('/login', { replace: true });
+    navigate('/', { replace: true });
     toast('Your session has ended. Please sign in again.', 'error');
+    openAuthDialog('login');
   });
 }
 
@@ -141,10 +142,10 @@ async function refreshAccountThenGoHome() {
  * Gives the navigation to the router.
  */
 function registerRoutes() {
-  route('/', () => renderHome(root));
-  route('/home', () => renderHome(root));
-  route('/login', () => renderAuthView('login'));
-  route('/signup', () => renderAuthView('signup'));
+  route('/', () => renderHomePage());
+  route('/home', () => renderHomePage());
+  route('/login', () => renderHomeWithAuth('login'));
+  route('/signup', () => renderHomeWithAuth('signup'));
 
   route('/dashboard', async ({ container, route }) => {
     const account = currentAccount();
@@ -248,21 +249,60 @@ function registerRoutes() {
 }
 
 /**
- * Renders the sign in or the sign up screen.
+ * Renders the home page.
+ *
+ * <p>The sign in and the sign up open over the page as a dialog, so a reader never
+ * loses the page they were on.
  */
-async function renderAuthView(mode) {
-  replaceChildren(root, h('div.empty-state', [h('div.glyph', h('div.spinner')), h('p', 'Loading…')]));
-  const afterAuth = async () => {
-    const bootstrap = await api.get('/auth/session');
-    setState({ account: bootstrap.account, institution: bootstrap.institution || institution() });
-    const account = currentAccount();
-    navigate(account.role === 'STUDENT' && account.faceState !== 'VERIFIED' ? '/profile' : '/dashboard');
-  };
-  if (mode === 'signup') {
-    await renderSignup(root, afterAuth);
-  } else {
-    await renderLogin(root, afterAuth);
+function renderHomePage() {
+  renderHome(root, {
+    onSignIn: () => signInDialog('login'),
+    onSignUp: () => signInDialog('signup')
+  });
+}
+
+/**
+ * Opens the sign in or the sign up over the page and takes the person to their
+ * workspace when they are through.
+ *
+ * @param {'login'|'signup'} mode
+ */
+async function signInDialog(mode) {
+  const account = await openAuthDialog(mode);
+  if (!account) {
+    return;
   }
+  await afterAuth();
+}
+
+/**
+ * Renders the home page and opens the sign in or the sign up over it.
+ *
+ * @param {'login'|'signup'} mode
+ */
+async function renderHomeWithAuth(mode) {
+  renderHomePage();
+  const account = await openAuthDialog(mode);
+  if (!account) {
+    // The dialog was closed, so the address goes back to the home page.
+    navigate('/', { replace: true });
+    return;
+  }
+  await afterAuth(account);
+}
+
+/**
+ * Takes the session of the person who just signed in and opens their workspace.
+ */
+async function afterAuth() {
+  const bootstrap = await api.get('/auth/session');
+  setState({ account: bootstrap.account, institution: bootstrap.institution || institution() });
+  const account = currentAccount();
+  if (!account) {
+    navigate('/', { replace: true });
+    return;
+  }
+  navigate(account.role === 'STUDENT' && account.faceState !== 'VERIFIED' ? '/profile' : '/dashboard');
 }
 
 /**
@@ -471,13 +511,13 @@ function onMenuKeyDown(event) {
 }
 
 /**
- * Signs the account out and returns to the sign in screen.
+ * Signs the account out and returns to the home page.
  */
 async function signOut() {
   await api.post('/auth/logout');
   setState({ account: null });
   replaceChildren(root);
-  navigate('/login');
+  navigate('/');
 }
 
 /**

@@ -192,9 +192,10 @@ export function toast(message, variant = 'info') {
  * @param {string} options.title
  * @param {(ctx: {close: (value: any) => void}) => Node} options.body
  * @param {(ctx: {close: (value: any) => void}) => Node[]} [options.actions]
+ * @param {boolean} [options.wide] Makes the dialog wide enough to hold two panels.
  * @returns {Promise<any>}
  */
-export function openModal({ title, body, actions = [] }) {
+export function openModal({ title, body, actions = [], wide = false }) {
   return new Promise((resolve) => {
     let settled = false;
     const previousFocus = document.activeElement;
@@ -245,7 +246,7 @@ export function openModal({ title, body, actions = [] }) {
     };
 
     const context = { close };
-    const dialog = h('div.modal', [
+    const dialog = h(wide ? 'div.modal.modal-wide' : 'div.modal', [
       h('div.modal-header', [
         h('h3', title),
         h('button.icon-button', { type: 'button', 'aria-label': 'Close', onClick: () => close(undefined) },

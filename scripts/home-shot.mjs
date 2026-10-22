@@ -91,6 +91,13 @@ await waitFor('document.readyState === "complete"', 'the page');
 await waitFor('document.querySelector(".home-title") !== null', 'the home page');
 await new Promise((resolve) => setTimeout(resolve, 800));
 
+// The picture can be of the home page or of the sign in dialog over it.
+if (process.argv[4] === 'dialog') {
+  await evaluate('document.querySelector(".home-nav-links a.button").click()');
+  await waitFor('document.querySelector(".modal .auth-card") !== null', 'the sign in dialog');
+  await new Promise((resolve) => setTimeout(resolve, 600));
+}
+
 const shot = await send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: true });
 const { writeFileSync } = await import('node:fs');
 writeFileSync(output, Buffer.from(shot.data, 'base64'));

@@ -512,6 +512,36 @@
   text-align: center;
 }
 
+/* The sign in and the sign up open over the page, in a dialog that carries the same
+   split as the screen: the black panel on the left, the form on the right. */
+.auth-in-dialog {
+  min-height: 0;
+  background: var(--background);
+}
+
+.auth-in-dialog .auth-aside {
+  padding: var(--space-7) var(--space-6);
+  justify-content: flex-start;
+  gap: var(--space-6);
+}
+
+.auth-in-dialog .auth-aside h2 {
+  font-size: var(--text-xl);
+}
+
+/* The dialog is short, so the panel keeps the promise and not the list of points. */
+.auth-in-dialog .auth-points {
+  display: none;
+}
+
+.auth-in-dialog .auth-main {
+  padding: var(--space-8) var(--space-6);
+}
+
+.auth-in-dialog .auth-card {
+  width: min(360px, 100%);
+}
+
 .demo-note {
   margin-top: var(--space-6);
   padding: var(--space-3) var(--space-4);
@@ -719,6 +749,11 @@
   }
 
   .auth-points {
+    display: none;
+  }
+
+  /* In a dialog the panel would take the room the form needs, so it goes away. */
+  .auth-in-dialog .auth-aside {
     display: none;
   }
 }
