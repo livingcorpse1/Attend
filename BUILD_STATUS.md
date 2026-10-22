@@ -154,7 +154,7 @@ the database is still reachable and that a sign in still works.
 
 ## Verified
 
-* The Maven suite passes: 59 tests.
+* The Maven suite passes: 62 tests.
   * `FaceRecognitionServiceTest` runs the real models against a known portrait: one
     face detected, the alignment produces the expected crop, the descriptor is stable
     and two different faces score below the match threshold. Every pair of models that
@@ -165,7 +165,9 @@ the database is still reachable and that a sign in still works.
     identity check, registration and consent, the password policy, the CSRF
     requirement, role scoping, the single use ticket, a failed face check creating no
     record, a tampered code and the audited teacher correction. It also covers the
-    rule that attendance is only taken for a lecture of the day and of that teacher.
+    rule that attendance is only taken for a lecture of the day and of that teacher. It
+    also covers the rule that a teacher may enrol a student in their own class and
+    remove a class section of their own, and not one of a colleague.
   * `TimetableIntegrationTest` covers the teaching diary: a teacher sees only their own
     slots, can add a lecture to their own subject, cannot schedule a subject they do
     not teach, cannot overlap themselves or the class, cannot leave the teaching day,
