@@ -247,12 +247,23 @@ async function run() {
       `the address is ${entry.hash}`);
   }
 
-  const account = await evaluate(`(() => {
-    const button = document.querySelector('#account');
-    return { exists: Boolean(button), text: button ? button.textContent.trim() : '' };
+  const account = await evaluate(`(async () => {
+    const button = document.querySelector('#user-menu');
+    if (!button) {
+      return { exists: false };
+    }
+    const name = button.querySelector('.name');
+    button.click();
+    await new Promise((r) => setTimeout(r, 400));
+    const menu = document.querySelector('.menu');
+    const entries = menu ? [...menu.querySelectorAll('.menu-item')].map((item) => item.textContent.trim()) : [];
+    return { exists: true, name: name ? name.textContent.trim() : '', entries };
   })()`);
-  check('the name of the account is at the bottom of the menu', account.exists && account.text.length > 0,
-    account.text);
+  check('the name of the account is at the bottom of the menu',
+    account.exists && account.name.length > 0, account.name);
+  check('the menu of the account opens the profile',
+    (account.entries || []).some((entry) => /profile/i.test(entry)),
+    (account.entries || []).join(', '));
 
   const scannerShortcut = await evaluate(`Boolean(document.querySelector('#scan-shortcut'))`);
   check('the student has a button to scan the code right away', scannerShortcut);

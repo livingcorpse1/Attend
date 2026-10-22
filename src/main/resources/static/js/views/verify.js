@@ -9,6 +9,8 @@
 import { h, replaceChildren } from '../dom.js';
 import { api } from '../api.js';
 import { toast } from '../ui.js';
+import { onDispose } from '../router.js';
+import { icon } from '../icons.js';
 import { cameraPanel, openCamera, captureSequence, framesToForm } from '../camera.js';
 
 /**
@@ -120,8 +122,10 @@ export async function runLivenessCapture({ panel, challenge, submit, onFinished 
 export function identityCheckSection(status, { container, onVerified }) {
   const panel = h('div.stack.stack-3');
   const intro = h('div.stack.stack-2');
-  const startButton = h('button.button.button-primary', { type: 'button' },
-    status.state === 'VERIFIED' ? 'Run the check again' : 'Start the identity check');
+  const startButton = h('button.button.button-primary', { type: 'button' }, [
+    icon('scan-face', { size: 16 }),
+    h('span', status.state === 'VERIFIED' ? 'Run the check again' : 'Start the identity check')
+  ]);
 
   const start = async () => {
     startButton.disabled = true;
@@ -153,7 +157,7 @@ export function identityCheckSection(status, { container, onVerified }) {
       });
       // Leaving the profile releases the camera.
       if (container) {
-        container.dispose = () => capture?.stop?.();
+        onDispose(container, () => capture?.stop?.());
       }
     } catch (failure) {
       replaceChildren(intro, h('div.alert.alert-error', failure.message));

@@ -7,17 +7,19 @@
 
 import { h, replaceChildren } from './dom.js';
 import { api, prefetch } from './api.js';
-import { applyTheme, currentAccount, institution, setState, toggleTheme } from './store.js';
+import { applyTheme, currentAccount, institution, refreshAccount, setState, theme, toggleTheme } from './store.js';
 import {
   isCurrent,
   navigate,
   route,
+  setAfterEach,
   setContainerProvider,
   setGuard,
   setNotFound,
   startRouter
 } from './router.js';
 import { toast, viewSkeleton } from './ui.js';
+import { icon } from './icons.js';
 import { renderLogin, renderSignup } from './views/auth.js';
 import {
   renderStudentAttendance,
@@ -25,7 +27,6 @@ import {
   renderStudentTimetable,
   renderVerifyPresence
 } from './views/student.js';
-import { renderProfile } from './views/profile.js';
 import {
   renderFacultyAttendance,
   renderFacultyDashboard,
@@ -33,23 +34,24 @@ import {
   renderFacultyTimetable
 } from './views/faculty.js';
 import { renderMyClasses } from './views/classes.js';
+import { renderProfile } from './views/profile.js';
 
 const root = document.getElementById('app');
 
 /** The navigation entries per role. */
 const NAVIGATION = {
   STUDENT: [
-    { path: '/dashboard', label: 'Dashboard', glyph: '⌂' },
-    { path: '/verify-presence', label: 'Verify presence', glyph: '◎' },
-    { path: '/attendance', label: 'My attendance', glyph: '◷' },
-    { path: '/timetable', label: 'Timetable', glyph: '▤' }
+    { path: '/dashboard', label: 'Dashboard', glyph: 'dashboard' },
+    { path: '/verify-presence', label: 'Verify presence', glyph: 'qr' },
+    { path: '/attendance', label: 'My attendance', glyph: 'clipboard-check' },
+    { path: '/timetable', label: 'Timetable', glyph: 'calendar' }
   ],
   FACULTY: [
-    { path: '/dashboard', label: 'Dashboard', glyph: '⌂' },
-    { path: '/attendance', label: 'Take attendance', glyph: '◎' },
-    { path: '/classes', label: 'My classes', glyph: '▤' },
-    { path: '/timetable', label: 'Timetable', glyph: '▥' },
-    { path: '/reports', label: 'Reports', glyph: '▥' }
+    { path: '/dashboard', label: 'Dashboard', glyph: 'dashboard' },
+    { path: '/attendance', label: 'Take attendance', glyph: 'radio' },
+    { path: '/classes', label: 'My classes', glyph: 'book' },
+    { path: '/timetable', label: 'Timetable', glyph: 'calendar' },
+    { path: '/reports', label: 'Reports', glyph: 'chart' }
   ]
 };
 
@@ -61,10 +63,10 @@ const PAGE_TITLES = {
   '/verify-presence': 'Verify presence',
   '/profile': 'Profile',
   '/reports': 'Reports',
-  '/users': 'Accounts',
   '/classes': 'Subjects',
   '/settings': 'Settings',
-  '/audit': 'Audit trail'
+  '/audit': 'Audit trail',
+  '/verify-identity': 'Profile'
 };
 
 /** The API call each screen needs, so it can be fetched before the screen is opened. */
@@ -110,6 +112,14 @@ async function boot() {
 }
 
 /**
+ * Refreshes the account and then goes to the dashboard.
+ */
+async function refreshAccountThenGoHome() {
+  await refreshAccount();
+  navigate('/dashboard');
+}
+
+/**
  * Gives the navigation to the router.
  */
 function registerRoutes() {
@@ -147,6 +157,14 @@ function registerRoutes() {
     await renderVerifyPresence(container, route);
   });
 
+  route('/classes', async ({ container, route }) => {
+    await renderMyClasses(container, route);
+  });
+
+  route('/reports', async ({ container, route }) => {
+    await renderFacultyReports(container, route);
+  });
+
   route('/profile', async ({ container, route }) => {
     await renderProfile(container, route);
   });
@@ -158,14 +176,6 @@ function registerRoutes() {
 
   route('/biometric', () => {
     navigate('/profile', { replace: true });
-  });
-
-  route('/reports', async ({ container, route }) => {
-    await renderFacultyReports(container, route);
-  });
-
-  route('/classes', async ({ container, route }) => {
-    await renderMyClasses(container, route);
   });
 
   setContainerProvider(({ path }) => {
@@ -204,13 +214,23 @@ function registerRoutes() {
     }
     return true;
   });
+
+  // A screen that has just been opened is announced, and the focus moves to it, so
+  // that a keyboard user does not have to hunt for the new content.
+  setAfterEach(({ path, container }) => {
+    if (!container) {
+      return;
+    }
+    announce(PAGE_TITLES[path] || 'VeriQra');
+    enterView(container);
+  });
 }
 
 /**
  * Renders the sign in or the sign up screen.
  */
 async function renderAuthView(mode) {
-  replaceChildren(root, h('div', h('div.empty-state', 'Loading…')));
+  replaceChildren(root, h('div.empty-state', [h('div.glyph', h('div.spinner')), h('p', 'Loading…')]));
   const afterAuth = async () => {
     const bootstrap = await api.get('/auth/session');
     setState({ account: bootstrap.account, institution: bootstrap.institution || institution() });
@@ -241,8 +261,11 @@ function ensureShell() {
 
   const navItems = items.map((item) => h('a.nav-item', {
     href: `#${item.path}`,
-    dataset: { path: item.path }
-  }, [h('span.nav-icon', item.glyph), h('span', item.label)]));
+    dataset: { path: item.path, label: item.label }
+  }, [
+    h('span.nav-icon', icon(item.glyph, { size: 16 })),
+    h('span.nav-item-label', item.label)
+  ]));
 
   // Fetching the data of a screen the moment the pointer rests on it removes the wait
   // when the screen is actually opened.
@@ -263,30 +286,34 @@ function ensureShell() {
     prefetch('/faculty/sessions', { params: { status: 'ACTIVE' } });
   }
 
-  const content = h('section.content', { id: 'view' }, viewSkeleton());
+  const content = h('section.content', { id: 'view', tabindex: '-1' }, viewSkeleton());
 
   const shell = h('div.shell', [
     h('aside.sidebar', [
-      h('div.brand', [
-        h('img.brand-mark', { src: '/icons/logo.png', alt: '', width: '30', height: '30' }),
-        h('span', 'VeriQra')
+      h('a.brand', { href: '#/dashboard' }, [
+        h('img.brand-mark', { src: '/icons/logo.png', alt: '', width: '22', height: '22' }),
+        h('span.brand-text', [
+          h('span', 'VeriQra'),
+          institution().name ? h('small', institution().name) : null
+        ])
       ]),
       h('div.nav-group', [
         h('div.nav-label', 'Workspace'),
         h('nav.stack.stack-1', navItems)
       ]),
       h('div.sidebar-foot', [
-        h('button.nav-item.nav-account', {
+        h('button.sidebar-user', {
           type: 'button',
-          id: 'account',
-          'aria-label': 'Your profile',
-          onclick: () => navigate('/profile')
+          id: 'user-menu',
+          'aria-haspopup': 'menu',
+          'aria-expanded': 'false'
         }, [
-          h('span.nav-icon', '☺'),
-          h('span.nav-account-text', [
+          h('span.avatar', initials(account.fullName)),
+          h('span.sidebar-user-text.grow', [
             h('span.name', account.fullName),
             h('span.role', account.role.toLowerCase())
-          ])
+          ]),
+          h('span.nav-icon', icon('more', { size: 16 }))
         ])
       ])
     ]),
@@ -297,9 +324,13 @@ function ensureShell() {
           institution().name ? h('span.badge', institution().name) : null,
           account.role === 'STUDENT'
             ? h('a.button.button-primary.button-sm', { href: '#/verify-presence', id: 'scan-shortcut' },
-              '◎ Scan the code')
+              [icon('qr', { size: 14 }), h('span', 'Scan the code')])
             : null,
-          h('button.icon-button', { type: 'button', id: 'theme-toggle', 'aria-label': 'Switch the colour theme' }, '◐')
+          h('button.icon-button', {
+            type: 'button',
+            id: 'theme-toggle',
+            'aria-label': 'Switch the colour theme'
+          }, icon(theme() === 'dark' ? 'sun' : 'moon', { size: 16 }))
         ])
       ]),
       content
@@ -307,10 +338,125 @@ function ensureShell() {
   ]);
 
   replaceChildren(root, shell);
-  shell.querySelector('#theme-toggle').onclick = () => toggleTheme();
+
+  shell.querySelector('#theme-toggle').onclick = () => {
+    toggleTheme();
+    const button = shell.querySelector('#theme-toggle');
+    replaceChildren(button, icon(theme() === 'dark' ? 'sun' : 'moon', { size: 16 }));
+  };
+
+  shell.querySelector('#user-menu').onclick = (event) => {
+    event.stopPropagation();
+    openUserMenu(event.currentTarget);
+  };
 
   highlightNavigation();
   return content;
+}
+
+/**
+ * Opens the account menu under the user button in the rail.
+ */
+function openUserMenu(anchor) {
+  closeMenus();
+  const account = currentAccount();
+
+  const menu = h('div.menu', { role: 'menu' }, [
+    h('div.menu-item', { style: { cursor: 'default' } }, [
+      h('span', [
+        h('div', { style: { fontWeight: '500' } }, account.fullName),
+        h('div.text-xs.text-subtle', account.email || account.role.toLowerCase())
+      ])
+    ]),
+    h('div.menu-separator'),
+    h('button.menu-item', {
+      type: 'button',
+      role: 'menuitem',
+      onClick: () => {
+        closeMenus();
+        navigate('/profile');
+      }
+    }, [icon('user', { size: 16 }), h('span', 'Your profile')]),
+    h('button.menu-item.is-danger', {
+      type: 'button',
+      role: 'menuitem',
+      onClick: () => {
+        closeMenus();
+        signOut();
+      }
+    }, [icon('log-out', { size: 16 }), h('span', 'Sign out')])
+  ]);
+
+  document.body.append(menu);
+  positionMenu(menu, anchor, 'top');
+
+  anchor.setAttribute('aria-expanded', 'true');
+  menu.dataset.anchor = anchor.id;
+  menu.id = 'user-menu-panel';
+
+  setTimeout(() => {
+    document.addEventListener('click', closeMenus, { once: true });
+    document.addEventListener('keydown', onMenuKeyDown);
+  }, 0);
+}
+
+/**
+ * Places a menu next to its anchor, inside the window.
+ */
+function positionMenu(menu, anchor, placement) {
+  const bounds = anchor.getBoundingClientRect();
+  menu.style.position = 'fixed';
+  menu.style.zIndex = '100';
+  menu.style.visibility = 'hidden';
+  menu.style.left = '0px';
+  menu.style.top = '0px';
+
+  const size = menu.getBoundingClientRect();
+  const left = Math.min(
+    Math.max(8, bounds.left),
+    window.innerWidth - size.width - 8
+  );
+
+  let top = bounds.top - size.height - 8;
+  if (placement !== 'top' || top < 8) {
+    top = bounds.bottom + 8;
+  }
+  if (top + size.height > window.innerHeight - 8) {
+    top = Math.max(8, window.innerHeight - size.height - 8);
+  }
+
+  menu.style.left = `${left}px`;
+  menu.style.top = `${top}px`;
+  menu.style.visibility = 'visible';
+}
+
+/**
+ * Closes every open menu.
+ */
+function closeMenus() {
+  for (const menu of document.querySelectorAll('.menu[id]')) {
+    menu.remove();
+  }
+  for (const button of document.querySelectorAll('[aria-expanded="true"]')) {
+    button.setAttribute('aria-expanded', 'false');
+  }
+  document.removeEventListener('keydown', onMenuKeyDown);
+}
+
+function onMenuKeyDown(event) {
+  if (event.key === 'Escape') {
+    closeMenus();
+  }
+}
+
+/**
+ * Signs the account out and returns to the sign in screen.
+ */
+async function signOut() {
+  await api.post('/auth/logout');
+  setState({ account: null });
+  replaceChildren(root);
+  navigate('/login');
 }
 
 /**
@@ -319,7 +465,13 @@ function ensureShell() {
 function highlightNavigation() {
   const path = currentPathSafe();
   for (const link of document.querySelectorAll('.nav-item[data-path]')) {
-    link.classList.toggle('is-active', link.dataset.path === path);
+    const active = link.dataset.path === path;
+    link.classList.toggle('is-active', active);
+    if (active) {
+      link.setAttribute('aria-current', 'page');
+    } else {
+      link.removeAttribute('aria-current');
+    }
   }
   const title = document.getElementById('page-title');
   if (title) {
@@ -327,37 +479,42 @@ function highlightNavigation() {
   }
 }
 
-function currentPathSafe() {
-  const hash = window.location.hash.replace(/^#/, '') || '/';
-  return hash.length > 1 ? hash.replace(/\/+$/, '') : '/';
+/**
+ * The initials of a name, for the avatar in the rail.
+ */
+function initials(fullName) {
+  const parts = String(fullName || '').trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) {
+    return '?';
+  }
+  if (parts.length === 1) {
+    return parts[0].slice(0, 2).toUpperCase();
+  }
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
 /**
-
-function statTile(label, value, foot) {
-  return h('div.stat', [
-    h('div.stat-label', label),
-    h('div.stat-value', value),
-    h('div.stat-foot', foot)
-  ]);
+ * Announces a screen to the screen reader.
+ */
+function announce(message) {
+  const region = document.getElementById('live-region');
+  if (region) {
+    region.textContent = message;
+  }
 }
 
-function tableOfClasses(classList) {
-  if (!classList || classList.length === 0) {
-    return h('div.empty-state', 'No classes have been created yet.');
+/**
+ * Moves the focus to the screen that was just opened.
+ */
+function enterView(container) {
+  if (container && typeof container.focus === 'function') {
+    container.focus({ preventScroll: true });
   }
-  return h('div.table-wrap', h('table.data', [
-    h('thead', h('tr', [
-      h('th', 'Code'), h('th', 'Subject'), h('th', 'Section'), h('th', 'Room'), h('th', 'Students')
-    ])),
-    h('tbody', classList.map((row) => h('tr', [
-      h('td', row.subjectCode),
-      h('td', row.subjectName),
-      h('td', row.section),
-      h('td', row.room),
-      h('td.numeric', String(row.enrolled))
-    ])))
-  ]));
+}
+
+function currentPathSafe() {
+  const hash = window.location.hash.replace(/^#/, '') || '/';
+  return hash.length > 1 ? hash.replace(/\/+$/, '') : '/';
 }
 
 /**
@@ -372,6 +529,3 @@ function registerServiceWorker() {
     });
   }
 }
-
-window.addEventListener('offline', () => toast('You are offline. Cached screens keep working.', 'error'));
-window.addEventListener('online', () => toast('Back online.', 'success'));

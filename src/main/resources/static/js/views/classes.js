@@ -13,7 +13,8 @@
 import { h, replaceChildren } from '../dom.js';
 import { api, cachedGet, invalidate } from '../api.js';
 import { isCurrent } from '../router.js';
-import { openModal, table, toast } from '../ui.js';
+import { openModal, pageHead, table, toast } from '../ui.js';
+import { icon } from '../icons.js';
 
 /**
  * Renders the subjects, the class sections and the students of the teacher.
@@ -27,7 +28,7 @@ export async function renderMyClasses(container, route) {
     const subjectTable = table(data.subjects, [
       { key: 'code', label: 'Code' },
       { key: 'name', label: 'Subject' }
-    ], { empty: 'You have not created a subject yet.', emptyGlyph: '▤' });
+    ], { empty: 'You have not created a subject yet.', emptyGlyph: 'book' });
 
     const classTable = table(data.classes, [
       { key: 'subjectCode', label: 'Code' },
@@ -43,21 +44,17 @@ export async function renderMyClasses(container, route) {
           onClick: () => removeClass(container, route, data, row)
         }, 'Remove')
       }
-    ], { empty: 'You have not created a class section yet.', emptyGlyph: '▤' });
+    ], { empty: 'You have not created a class section yet.', emptyGlyph: 'book' });
 
     container.replaceChildren(h('div.stack.stack-5', [
-      h('div.page-head', [
-        h('div', {
-          h1: 'My classes',
-          lead: 'The subjects you teach, the sections that run them and the students who attend.'
-        }),
-        h('div.row.gap-2', [
-          h('button.button.button-primary', {
-            type: 'button',
-            onClick: () => createSubject(container, route, data)
-          }, 'Add a subject')
-        ])
-      ]),
+      pageHead({
+        title: 'My classes',
+        lead: 'The subjects you teach, the sections that run them and the students who attend.',
+        actions: h('button.button.button-primary', {
+          type: 'button',
+          onClick: () => createSubject(container, route, data)
+        }, [icon('plus', { size: 16 }), h('span', 'Add a subject')])
+      }),
       h('div.card', [
         h('div.card-header', [h('h3', 'My subjects')]),
         h('div.card-body card-body-flush', subjectTable)

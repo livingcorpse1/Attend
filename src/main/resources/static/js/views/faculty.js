@@ -3,7 +3,7 @@
  */
 
 import { h, replaceChildren } from '../dom.js';
-import { isCurrent } from '../router.js';
+import { isCurrent, onDispose } from '../router.js';
 import { api, cachedGet, invalidate, poll } from '../api.js';
 import {
   confirmDialog,
@@ -12,11 +12,13 @@ import {
   formatPercentage,
   humanise,
   openModal,
+  pageHead,
   statTile,
   statusBadge,
   table,
   toast
 } from '../ui.js';
+import { icon } from '../icons.js';
 import { renderQr } from '../qr.js';
 import { createCalendar, createScheduler } from '../calendar.js';
 
@@ -36,15 +38,16 @@ export async function renderFacultyDashboard(container, route) {
 
     const stats = h('div.stat-grid', [
       statTile({
+        glyph: 'percent',
         label: 'Attendance recorded',
         value: formatPercentage(data.overallPercentage, 1),
         foot: 'Across every subject you teach',
         tone,
         meter: data.overallPercentage
       }),
-      statTile({ label: 'Sessions held', value: String(data.sessionsHeld), foot: 'Since the semester started' }),
-      statTile({ label: 'Records marked', value: String(data.recordsMarked), foot: 'Present entries recorded' }),
-      statTile({ label: 'Classes taught', value: String(data.classesTaught), foot: 'Subjects assigned to you' })
+      statTile({ glyph: 'radio', label: 'Sessions held', value: String(data.sessionsHeld), foot: 'Since the semester started' }),
+      statTile({ glyph: 'check', label: 'Records marked', value: String(data.recordsMarked), foot: 'Present entries recorded' }),
+      statTile({ glyph: 'book', label: 'Classes taught', value: String(data.classesTaught), foot: 'Subjects assigned to you' })
     ]);
 
     const subjectTable = table(data.subjects, [
@@ -71,13 +74,14 @@ export async function renderFacultyDashboard(container, route) {
     }));
 
     container.replaceChildren(h('div.stack.stack-5', [
-      h('div.page-head', [
-        h('div', [
-          h('h1', 'Teaching dashboard'),
-          h('p.lead', 'Attendance across your classes, and who needs attention.')
-        ]),
-        h('a.button.button-primary.button-lg', { href: '#/attendance' }, 'Take attendance →')
-      ]),
+      pageHead({
+        title: 'Teaching dashboard',
+        lead: 'Attendance across your classes, and who needs attention.',
+        actions: h('a.button.button-primary', { href: '#/attendance' }, [
+          icon('radio', { size: 16 }),
+          h('span', 'Take attendance')
+        ])
+      }),
       stats,
       calendar,
       h('div.split-wide', [
@@ -99,7 +103,7 @@ export async function renderFacultyDashboard(container, route) {
   // The numbers on the dashboard move while the teacher is looking at them, so the
   // screen reads them again on its own.
   const stop = poll('/faculty/dashboard', { onRefresh: paint }, 30000);
-  container.dispose = stop;
+  onDispose(container, stop);
 }
 
 /* -------------------------------------------------------------------------- */
@@ -138,7 +142,7 @@ export async function renderFacultyAttendance(container, route) {
   const showNothing = () => {
     shown = null;
     replaceChildren(sessionArea, h('div.card.card-pad', emptyState(
-      'No session is running. Start one to project the classroom code.', '◉')));
+      'No session is running. Start one to project the classroom code.', 'radio')));
   };
 
   /**
@@ -203,7 +207,7 @@ export async function renderFacultyAttendance(container, route) {
       h('span.text-xs.text-muted', 'Attendance follows the timetable')
     ]),
     h('div.card-body.stack.stack-3', lectures.length === 0
-      ? [emptyState('You have no lectures scheduled today, so there is no attendance to take.', '▤')
+      ? [emptyState('You have no lectures scheduled today, so there is no attendance to take.', 'book')
       ]
       : lectures.map(lectureRow))
   ]);
@@ -218,17 +222,15 @@ export async function renderFacultyAttendance(container, route) {
     }
     const body = setupCard.querySelector('.card-body');
     replaceChildren(body, fresh.length === 0
-      ? [emptyState('You have no lectures scheduled today, so there is no attendance to take.', '▤')]
+      ? [emptyState('You have no lectures scheduled today, so there is no attendance to take.', 'book')]
       : fresh.map(lectureRow));
   };
 
   container.replaceChildren(h('div.stack.stack-6', [
-    h('div.page-head', [
-      h('div', [
-        h('h1', 'Take attendance'),
-        h('p.lead', 'Pick a lecture of the day, project the rotating code and watch the roster fill in as students check in.')
-      ])
-    ]),
+    pageHead({
+      title: 'Take attendance',
+      lead: 'Pick a lecture of the day, project the rotating code and watch the roster fill in as students check in.'
+    }),
     h('div.split-wide', [setupCard, sessionArea])
   ]));
 
@@ -241,7 +243,7 @@ export async function renderFacultyAttendance(container, route) {
   // The lectures of the day are read again, so a teacher who opens the screen before
   // their lecture starts finds it there.
   const stop = poll('/faculty/schedule', { onRefresh: paintLectures }, 30000);
-  container.dispose = stop;
+  onDispose(container, stop);
 
   /**
    * Renders the running session: the rotating code and the live roster.
@@ -254,7 +256,7 @@ export async function renderFacultyAttendance(container, route) {
     const qrHost = h('div');
     const countdown = h('span.qr-timer', '');
     const liveState = h('span.live-dot', 'Live');
-    const rosterHost = h('div', emptyState('Loading the roster…', '◷'));
+    const rosterHost = h('div', emptyState('Loading the roster…', 'clock'));
     const endButton = h('button.button.button-danger#end', { type: 'button' }, 'End session');
 
     const stop = () => {
@@ -382,7 +384,7 @@ export async function renderFacultyAttendance(container, route) {
     rosterTimer = window.setInterval(refreshRoster, 3000);
 
     // The router calls this when the teacher leaves the screen, so the polling stops.
-    container.dispose = stop;
+    onDispose(container, stop);
   }
 }
 
@@ -510,7 +512,7 @@ export async function renderFacultyTimetable(container, route) {
  */
 function slotList(slots) {
   if (!slots || slots.length === 0) {
-    return emptyState('You have not scheduled any lectures yet.', '▤');
+    return emptyState('You have not scheduled any lectures yet.', 'calendar');
   }
   const byDay = new Map();
   for (const slot of slots) {

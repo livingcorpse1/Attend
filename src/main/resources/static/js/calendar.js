@@ -8,6 +8,7 @@
  */
 
 import { h } from './dom.js';
+import { icon } from './icons.js';
 import { formatRange, formatTime, weekdayName, weekdayShort } from './ui.js';
 
 /** The first day of the week, Monday. */
@@ -157,7 +158,7 @@ export function createCalendar({ slots, onSlotClick }) {
       weekStart = addDays(weekStart, -7);
       paint();
     }
-  }, '‹');
+  }, icon('chevron-left', { size: 16 }));
 
   const next = h('button.icon-button', {
     type: 'button',
@@ -166,7 +167,7 @@ export function createCalendar({ slots, onSlotClick }) {
       weekStart = addDays(weekStart, 7);
       paint();
     }
-  }, '›');
+  }, icon('chevron-right', { size: 16 }));
 
   const todayButton = h('button.button.button-secondary.button-sm', {
     type: 'button',
@@ -286,7 +287,7 @@ export function createScheduler({ slots, editable = false, onSlotClick, onEmptyC
   }
 
   const legend = h('div.scheduler-legend', [
-    h('span', [h('span.swatch', { style: { background: 'var(--brand)' } }), 'Your lectures']),
+    h('span', [h('span.swatch', { style: { background: 'var(--accent)' } }), 'Your lectures']),
     editable ? h('span', 'Click an empty column to add a lecture. Click a lecture to change it.') : null
   ]);
 

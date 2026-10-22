@@ -165,15 +165,27 @@ asked to run the identity check again instead.
 | Client | Plain HTML, CSS and ES modules | No build step. The whole client is served from this origin. |
 | Offline | A service worker | The application installs and opens on a weak connection. |
 
-The client ships **no third party assets**. The QR libraries are vendored, the fonts are
-the system stack and the content security policy forbids any external origin.
+The client ships **no third party assets**. The QR libraries are vendored, the type
+family is served from this origin and the content security policy forbids any external
+origin.
 
 ### The look
 
-One warm neutral palette with one evergreen accent. There is no blue and no purple, no
-gradients on buttons and no glows: the interface recedes and the data comes forward.
-Primary actions are ink rather than a brand colour, which is what separates a tool from
-a toy. A light and a dark theme are both first class.
+The interface is built on the **Geist** design language: a neutral scale, one accent for
+the things that act, three semantic colours and nothing else that is saturated. Primary
+actions are ink rather than a brand colour, which is what separates a tool from a toy. A
+light and a dark theme are both first class.
+
+The whole system is written down in [DESIGN.md](DESIGN.md): the tokens, the shell, the
+parts and the rules that hold them together. The icons are one drawing, inline SVG on a
+24 unit grid, and there is no unicode in place of an icon anywhere.
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\fetch-fonts.ps1
+```
+
+The fonts are downloaded once and served from this origin, so nothing is asked of a font
+service at runtime.
 
 ---
 
@@ -389,6 +401,7 @@ that matter most:
 
 ## Documentation
 
+* [DESIGN.md](DESIGN.md) — the design system: the tokens, the shell, the parts and the rules.
 * [API.md](API.md) — every route, with its scope and its request and response shapes.
 * [SECURITY.md](SECURITY.md) — the threat model, the controls and the honest limits.
 * [BUILD_STATUS.md](BUILD_STATUS.md) — what is done, what is verified and what is not.

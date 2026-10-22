@@ -99,6 +99,13 @@ async function connect() {
       });
       socket.addEventListener('message', (event) => {
         const message = JSON.parse(event.data);
+        if (message.method === 'Runtime.exceptionThrown') {
+          const details = message.params.exceptionDetails;
+          console.error(`  exception: ${details.exception?.description || details.text}`);
+        }
+        if (message.method === 'Runtime.consoleAPICalled') {
+          console.log(`  console.${message.params.type}: ${message.params.args.map((a) => a.value ?? a.description).join(' ')}`);
+        }
         if (message.id && pending.has(message.id)) {
           const handler = pending.get(message.id);
           pending.delete(message.id);
@@ -135,44 +142,68 @@ async function signIn(email, password) {
 async function goto(hash, waitFor) {
   await evaluate(`location.hash = ${JSON.stringify(hash)}`);
   const started = Date.now();
-  while (Date.now() - started < 12000) {
+  while (Date.now() - started < 25000) {
     if (await evaluate(waitFor)) { return; }
     await new Promise((resolve) => setTimeout(resolve, 200));
   }
+  console.warn(`  the screen ${hash} did not settle in time`);
+  const state = await evaluate(`(() => {
+    const view = document.getElementById('view');
+    return {
+      hash: location.hash,
+      route: view ? view.dataset.route : null,
+      cards: document.querySelectorAll('#view .card').length,
+      values: document.querySelectorAll('#view .stat-value').length,
+      skeletons: document.querySelectorAll('#view .skeleton').length,
+      head: view ? view.innerText.slice(0, 120) : ''
+    };
+  })()`);
+  console.warn(`  the page says: ${JSON.stringify(state)}`);
+}
+
+/**
+ * Waits for something on the page.
+ */
+async function waitFor(predicate, description, timeoutMillis = 25000) {
+  const started = Date.now();
+  while (Date.now() - started < timeoutMillis) {
+    if (await evaluate(predicate)) { return; }
+    await new Promise((resolve) => setTimeout(resolve, 200));
+  }
+  console.warn(`  ${description} did not appear in time`);
 }
 
 /**
  * Builds the academic structure the screens need.
  *
- * Nothing about the college is seeded, so the script creates a subject, a class section
- * and an enrolment through the administration API.
+ * <p>There is no administration any more, so the script builds what it needs through the
+ * teacher's own API and removes it again when it is done.
  */
 async function buildAcademicStructure() {
-  await signIn(ADMIN_EMAIL, ADMIN_PASSWORD);
+  await signIn('faculty@veriqra.local', DEMO_PASSWORD);
   const ids = await evaluate(`(async () => {
     const bootstrap = await (await fetch('/api/auth/session')).json();
     const headers = { 'Content-Type': 'application/json', 'X-XSRF-TOKEN': bootstrap.csrfToken };
-    const users = await (await fetch('/api/admin/users', { headers })).json();
-    const teacher = users.find((user) => user.email === 'faculty@veriqra.local');
-    const student = users.find((user) => user.email === 'student@veriqra.local');
 
-    const subjects = await (await fetch('/api/admin/subjects', { headers })).json();
-    let subject = subjects.find((entry) => entry.code === 'SMOKE1');
+    const subjects = await (await fetch('/api/faculty/subjects', { headers })).json();
+    let subject = subjects.find((entry) => entry.code === 'SHOTS');
     if (!subject) {
-      subject = await (await fetch('/api/admin/subjects', {
+      subject = await (await fetch('/api/faculty/subjects', {
         method: 'POST', headers,
-        body: JSON.stringify({ code: 'SMOKE1', name: 'Smoke Test Subject', facultyId: teacher.id })
+        body: JSON.stringify({ code: 'SHOTS', name: 'Screenshot Subject' })
       })).json();
     }
-    const classes = await (await fetch('/api/admin/classes', { headers })).json();
+
+    const classes = await (await fetch('/api/faculty/classes', { headers })).json();
     let classSection = classes.find((entry) => entry.subjectId === subject.id);
     if (!classSection) {
-      classSection = await (await fetch('/api/admin/classes', {
+      classSection = await (await fetch('/api/faculty/classes', {
         method: 'POST', headers,
-        body: JSON.stringify({ subjectId: subject.id, section: 'A', room: 'Smoke Lab' })
+        body: JSON.stringify({ subjectId: subject.id, section: 'A', room: 'Screenshot Lab' })
       })).json();
     }
-    await fetch('/api/admin/enrollments?studentId=' + student.id + '&classId=' + classSection.id,
+
+    await fetch('/api/faculty/enrollments?email=student@veriqra.local&classId=' + classSection.id,
       { method: 'POST', headers });
     return { classId: classSection.id, subjectId: subject.id };
   })()`);
@@ -186,28 +217,18 @@ async function removeAcademicStructure(ids) {
   if (!ids || !ids.classId) {
     return;
   }
-  // The script starts a live session, so it is removed first. A session that holds
-  // attendance records is never removed.
   await signIn('faculty@veriqra.local', DEMO_PASSWORD);
-  const sessions = await evaluate(`(async () => {
-    const bootstrap = await (await fetch('/api/auth/session')).json();
-    const headers = { 'X-XSRF-TOKEN': bootstrap.csrfToken };
-    const list = await (await fetch('/api/faculty/sessions?status=ALL&limit=100', { headers })).json();
-    return list.map((session) => session.id);
-  })()`);
-
-  await signIn(ADMIN_EMAIL, ADMIN_PASSWORD);
   await evaluate(`(async () => {
     const bootstrap = await (await fetch('/api/auth/session')).json();
     const headers = { 'Content-Type': 'application/json', 'X-XSRF-TOKEN': bootstrap.csrfToken };
-    for (const id of ${JSON.stringify(sessions)}) {
-      await fetch('/api/faculty/sessions/' + id, { method: 'DELETE', headers });
+    const list = await (await fetch('/api/faculty/sessions?status=ALL&limit=100', { headers })).json();
+    for (const session of list) {
+      await fetch('/api/faculty/sessions/' + session.id, { method: 'DELETE', headers });
     }
-    await fetch('/api/admin/classes/' + ${ids.classId}, { method: 'DELETE', headers });
-    await fetch('/api/admin/subjects/' + ${ids.subjectId}, { method: 'DELETE', headers });
+    await fetch('/api/faculty/classes/' + ${ids.classId}, { method: 'DELETE', headers });
+    await fetch('/api/faculty/subjects/' + ${ids.subjectId}, { method: 'DELETE', headers });
   })()`);
 }
-
 await connect();
 await send('Page.enable');
 await send('Runtime.enable');
@@ -226,22 +247,32 @@ await shot('02-sign-up');
 const structure = await buildAcademicStructure();
 await signIn('faculty@veriqra.local', 'Demo!2026');
 await send('Page.navigate', { url: `${baseUrl}/` });
-await new Promise((resolve) => setTimeout(resolve, 2000));
-await goto('#/dashboard', 'document.querySelector(".stat-grid") !== null');
-await new Promise((resolve) => setTimeout(resolve, 800));
+await waitFor('document.readyState === "complete"', 'the page');
+// The application reads the session before it can open a screen, so the wait is for the
+// shell and not for a fixed time.
+await waitFor('document.querySelector(".shell") !== null || document.querySelector(".auth-card") !== null',
+  'the application');
+await goto('#/dashboard', 'document.querySelector(".stat-value") !== null');
+await new Promise((resolve) => setTimeout(resolve, 1200));
 await shot('03-teacher-dashboard');
 
-await goto('#/attendance', 'document.querySelector("#class-choice") !== null');
+await goto('#/attendance', 'document.querySelector(".lecture-row") !== null || document.querySelector("#view .card") !== null');
 await new Promise((resolve) => setTimeout(resolve, 800));
 await shot('04-teacher-attendance');
 
 // Start a real session so the rotating code and the live roster are captured.
-await evaluate('document.querySelector("#start").click()');
+await evaluate('document.querySelector(".lecture-row button")?.click()');
 await new Promise((resolve) => setTimeout(resolve, 3000));
 await shot('04b-live-session');
+
+// The dashboard comes after the other screens, because the first request of a fresh
+// browser is the slow one and the screen would be caught with its placeholder.
+await goto('#/dashboard', 'document.querySelector(".stat-value") !== null');
+await new Promise((resolve) => setTimeout(resolve, 1500));
+await shot('03-teacher-dashboard');
 await evaluate('document.querySelector("#end")?.click()');
-await new Promise((resolve) => setTimeout(resolve, 500));
-await evaluate('document.querySelector(".modal-footer .button-danger")?.click()');
+await new Promise((resolve) => setTimeout(resolve, 700));
+await evaluate('[...document.querySelectorAll(".modal-footer button")].find((b) => /end session/i.test(b.textContent))?.click()');
 await new Promise((resolve) => setTimeout(resolve, 1500));
 
 await goto('#/timetable', 'document.querySelector(".scheduler") !== null');
@@ -260,31 +291,28 @@ await evaluate(`(async () => {
 await signIn('student@veriqra.local', 'Demo!2026');
 await send('Page.navigate', { url: `${baseUrl}/` });
 await new Promise((resolve) => setTimeout(resolve, 2000));
-await goto('#/verify-identity', 'document.querySelector(".verify-steps") !== null');
+await goto('#/profile', 'document.querySelector(".verify-steps") !== null');
 await new Promise((resolve) => setTimeout(resolve, 800));
-await shot('06-identity-check');
+await shot('06-profile');
 
-await goto('#/verify-presence', 'document.querySelector("#capture-panel") !== null || document.querySelector(".split-wide") !== null');
+await goto('#/verify-presence', 'document.querySelector(".split-wide") !== null');
 await new Promise((resolve) => setTimeout(resolve, 800));
 await shot('07-verify-presence');
 
 // The dark theme.
 await evaluate('document.documentElement.setAttribute("data-theme", "dark")');
-await goto('#/biometric', 'document.querySelector("#view .card") !== null');
+await goto('#/timetable', 'document.querySelector(".scheduler") !== null');
 await new Promise((resolve) => setTimeout(resolve, 800));
 await shot('08-dark-theme');
 
-// The administration screens.
-await signIn(ADMIN_EMAIL, ADMIN_PASSWORD);
+// The classes of the teacher.
+await evaluate('document.documentElement.setAttribute("data-theme", "light")');
+await signIn('faculty@veriqra.local', 'Demo!2026');
 await send('Page.navigate', { url: `${baseUrl}/` });
 await new Promise((resolve) => setTimeout(resolve, 2000));
 await goto('#/classes', 'document.querySelector("#view .card") !== null');
 await new Promise((resolve) => setTimeout(resolve, 800));
-await shot('09-admin-structure');
-
-await goto('#/settings', 'document.querySelector("#view .card") !== null');
-await new Promise((resolve) => setTimeout(resolve, 800));
-await shot('10-admin-settings');
+await shot('09-teacher-classes');
 
 // Leave the deployment as it was found.
 try {

@@ -7,9 +7,9 @@
 
 import { h } from '../dom.js';
 import { api, cachedGet, invalidate } from '../api.js';
-import { isCurrent, navigate } from '../router.js';
+import { isCurrent, navigate, onDispose } from '../router.js';
 import { currentAccount, refreshAccount } from '../store.js';
-import { table, toast } from '../ui.js';
+import { table, toast, pageHead } from '../ui.js';
 import { identityCheckSection, biometricPanel } from './verify.js';
 
 /**
@@ -74,12 +74,10 @@ async function renderStudentProfile(container, route, account) {
   });
 
   container.replaceChildren(h('div.stack.stack-6', [
-    h('div.page-head', [
-      h('div', [
-        h('h1', 'Your profile'),
-        h('p.lead', 'Your account, your identity check and the biometric data that is stored about you.')
-      ])
-    ]),
+    pageHead({
+      title: 'Your profile',
+      lead: 'Your account, your identity check and the biometric data that is stored about you.'
+    }),
     h('div.split-wide', [
       h('div.stack.stack-6', [details, check]),
       h('div.stack.stack-6', [biometric, sessionCard()])
@@ -107,7 +105,7 @@ async function renderFacultyProfile(container, route, account) {
   const subjects = table(structure.subjects || [], [
     { key: 'code', label: 'Code' },
     { key: 'name', label: 'Subject' }
-  ], { empty: 'You do not own any subject yet.', emptyGlyph: '▤' });
+  ], { empty: 'You do not own any subject yet.', emptyGlyph: 'book' });
 
   const classes = table(structure.classes || [], [
     { key: 'subjectCode', label: 'Code' },
@@ -115,7 +113,7 @@ async function renderFacultyProfile(container, route, account) {
     { key: 'section', label: 'Section' },
     { key: 'room', label: 'Room' },
     { key: 'enrolled', label: 'Students', align: 'right', render: (row) => String(row.enrolled) }
-  ], { empty: 'You do not teach any class yet.', emptyGlyph: '▤' });
+  ], { empty: 'You do not teach any class yet.', emptyGlyph: 'book' });
 
   const teaching = h('div.stack.stack-6', [
     h('div.card', [
@@ -129,12 +127,10 @@ async function renderFacultyProfile(container, route, account) {
   ]);
 
   container.replaceChildren(h('div.stack.stack-6', [
-    h('div.page-head', [
-      h('div', [
-        h('h1', 'Your profile'),
-        h('p.lead', 'Your account and the subjects you teach.')
-      ])
-    ]),
+    pageHead({
+      title: 'Your profile',
+      lead: 'Your account and the subjects you teach.'
+    }),
     h('div.split-wide', [
       h('div.stack.stack-6', [details, sessionCard()]),
       teaching

@@ -27,7 +27,7 @@ spring:
     password: ${DATABASE_PASSWORD:}
     driver-class-name: ${DATABASE_DRIVER:org.h2.Driver}
     hikari:
-      maximum-pool-size: ${DATABASE_POOL_SIZE:5}
+      maximum-pool-size: ${DATABASE_POOL_SIZE:12}
       # One idle connection is enough. Holding several open only means more of them go
       # stale while nobody is using them.
       minimum-idle: 1

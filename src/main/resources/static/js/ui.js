@@ -3,6 +3,7 @@
  */
 
 import { h, replaceChildren } from './dom.js';
+import { icon } from './icons.js';
 
 /* -------------------------------------------------------------------------- */
 /* Formatting                                                                  */
@@ -148,6 +149,13 @@ export function weekdayShort(dayOfWeek) {
 
 let toastStack = null;
 
+/** The icon that goes with each kind of message. */
+const TOAST_ICONS = {
+  info: 'info',
+  success: 'check-circle',
+  error: 'alert-circle'
+};
+
 /**
  * Shows a short lived message.
  *
@@ -159,11 +167,14 @@ export function toast(message, variant = 'info') {
     toastStack = h('div.toast-stack', { role: 'status', 'aria-live': 'polite' });
     document.body.append(toastStack);
   }
-  const node = h(`div.toast${variant === 'info' ? '' : `.is-${variant}`}`, message);
+  const node = h(`div.toast${variant === 'info' ? '' : `.is-${variant}`}`, [
+    icon(TOAST_ICONS[variant] || 'info', { size: 16 }),
+    h('span.grow', message)
+  ]);
   toastStack.append(node);
   window.setTimeout(() => {
     node.classList.add('is-leaving');
-    window.setTimeout(() => node.remove(), 200);
+    window.setTimeout(() => node.remove(), 160);
   }, variant === 'error' ? 5200 : 3200);
 }
 
@@ -174,6 +185,9 @@ export function toast(message, variant = 'info') {
 /**
  * Opens a modal dialog and resolves with the value passed to `close`.
  *
+ * <p>The focus is trapped inside the dialog while it is open, the page behind it
+ * cannot scroll, and the focus goes back to whatever opened it when it closes.
+ *
  * @param {object} options
  * @param {string} options.title
  * @param {(ctx: {close: (value: any) => void}) => Node} options.body
@@ -183,6 +197,7 @@ export function toast(message, variant = 'info') {
 export function openModal({ title, body, actions = [] }) {
   return new Promise((resolve) => {
     let settled = false;
+    const previousFocus = document.activeElement;
     const backdrop = h('div.modal-backdrop', {
       role: 'dialog',
       'aria-modal': 'true',
@@ -196,12 +211,36 @@ export function openModal({ title, body, actions = [] }) {
       settled = true;
       document.removeEventListener('keydown', onKeyDown);
       backdrop.remove();
+      document.body.style.removeProperty('overflow');
+      // The focus goes back where it came from, so the keyboard does not lose its place.
+      if (previousFocus && previousFocus.isConnected) {
+        previousFocus.focus();
+      }
       resolve(value);
     };
 
     const onKeyDown = (event) => {
       if (event.key === 'Escape') {
+        event.stopPropagation();
         close(undefined);
+        return;
+      }
+      if (event.key !== 'Tab') {
+        return;
+      }
+      // The focus cannot leave the dialog while it is open.
+      const focusable = focusableWithin(dialog);
+      if (focusable.length === 0) {
+        return;
+      }
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
       }
     };
 
@@ -209,7 +248,8 @@ export function openModal({ title, body, actions = [] }) {
     const dialog = h('div.modal', [
       h('div.modal-header', [
         h('h3', title),
-        h('button.icon-button', { type: 'button', 'aria-label': 'Close', onClick: () => close(undefined) }, '✕')
+        h('button.icon-button', { type: 'button', 'aria-label': 'Close', onClick: () => close(undefined) },
+          icon('close', { size: 16 }))
       ]),
       h('div.modal-body', body(context)),
       actions.length > 0 ? h('div.modal-footer', actions.map((action) => action(context))) : null
@@ -223,8 +263,22 @@ export function openModal({ title, body, actions = [] }) {
     });
     document.addEventListener('keydown', onKeyDown);
     document.body.append(backdrop);
-    dialog.querySelector('input, select, textarea, button')?.focus();
+    document.body.style.overflow = 'hidden';
+    // The first field gets the focus, so the form can be filled without reaching for
+    // the mouse. The close button is only the fallback.
+    const first = dialog.querySelector('input, select, textarea');
+    (first || dialog.querySelector('button'))?.focus();
   });
+}
+
+/**
+ * Every element inside a node that can hold the focus.
+ */
+function focusableWithin(node) {
+  return [...node.querySelectorAll(
+    'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), '
+    + 'textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+  )].filter((element) => element.offsetParent !== null);
 }
 
 /** Shows a confirmation dialog and resolves to true when the action is confirmed. */
@@ -253,7 +307,7 @@ export function confirmDialog({ title, message, confirmLabel = 'Confirm', varian
  */
 export function table(rows, columns, options = {}) {
   if (!rows || rows.length === 0) {
-    return emptyState(options.empty || 'Nothing to show yet.', options.emptyGlyph || '○');
+    return emptyState(options.empty || 'Nothing to show yet.', options.emptyGlyph || 'inbox');
   }
   const head = h('thead', h('tr', columns.map((column) =>
     h(`th${column.align === 'right' ? '.numeric' : ''}`, column.label || humanise(column.key)))));
@@ -265,7 +319,7 @@ export function table(rows, columns, options = {}) {
       cell.append(content);
     } else if (content === null || content === undefined || content === '') {
       cell.textContent = '—';
-      cell.style.color = 'var(--ink-subtle)';
+      cell.style.color = 'var(--text-tertiary)';
     } else {
       cell.textContent = String(content);
     }
@@ -277,9 +331,13 @@ export function table(rows, columns, options = {}) {
 
 /**
  * Renders an empty state block.
+ *
+ * @param {string} message
+ * @param {string|Node} [glyph] The name of an icon, or an element.
  */
-export function emptyState(message, glyph = '○') {
-  return h('div.empty-state', [h('div.glyph', glyph), h('p', message)]);
+export function emptyState(message, glyph = 'inbox') {
+  const mark = typeof glyph === 'string' ? icon(glyph, { size: 20 }) : glyph;
+  return h('div.empty-state', [h('div.glyph', mark), h('p', message)]);
 }
 
 /**
@@ -317,19 +375,30 @@ export function viewSkeleton() {
 
 /**
  * Renders a stat tile.
+ *
+ * @param {object} options
+ * @param {string} options.label
+ * @param {string|number} options.value
+ * @param {string} [options.foot]
+ * @param {'good'|'warn'|'bad'} [options.tone]
+ * @param {number} [options.meter]
+ * @param {string} [options.glyph] The name of an icon.
  */
-export function statTile({ label, value, foot, tone, meter }) {
+export function statTile({ label, value, foot, tone, meter, glyph }) {
   const toneClass = tone ? ` is-${tone}` : '';
-  // Every tile carries the same parts, and the row of the meter always has the same
-  // height, so the note of every tile in a row stands on the same line.
-  const children = [
-    h('div.stat-label', label),
-    h(`div.stat-value${toneClass}`, value),
-    h('div.stat-meter', meter !== undefined && meter !== null
-      ? h(`div.meter${meter < 75 ? '.is-low' : ''}`, h('span', { style: { width: `${Math.min(100, Math.max(0, meter))}%` } }))
-      : null),
-    h('div.stat-foot', foot || '')
-  ];
+    // Every tile carries the same parts, and the row of the meter always has the same
+    // height, so the note of every tile in a row stands on the same line.
+    const children = [];
+    if (glyph) {
+      children.push(h('div.stat-glyph', icon(glyph, { size: 16 })));
+    }
+    children.push(h('div.stat-label', label));
+    children.push(h(`div.stat-value${toneClass}`, value));
+    children.push(h('div.stat-meter', meter !== undefined && meter !== null
+      ? h(`div.meter${meter < 75 ? '.is-low' : ''}`,
+        h('span', { style: { width: `${Math.min(100, Math.max(0, meter))}%` } }))
+      : null));
+    children.push(h('div.stat-foot', foot || ''));
   return h('div.stat', children);
 }
 
@@ -346,7 +415,30 @@ export function statusBadge(status) {
     CLOSED: 'badge',
     EXPIRED: 'badge'
   };
-  return h(`span.badge.${variants[status] || 'badge'}`, humanise(status));
+  return h(`span.badge.badge-dot.${variants[status] || 'badge'}`, humanise(status));
+}
+
+/**
+ * Renders the header of a screen.
+ *
+ * <p>Every screen starts with the same three things: a title, a line that says what
+ * the screen is for, and the actions that belong to it. Building them here keeps them
+ * looking the same on every screen.
+ *
+ * @param {object} options
+ * @param {string} options.title
+ * @param {string} [options.lead]
+ * @param {Node|Node[]} [options.actions]
+ * @returns {HTMLElement}
+ */
+export function pageHead({ title, lead, actions }) {
+  return h('div.page-head', [
+    h('div', [
+      h('h1', title),
+      lead ? h('p.lead', lead) : null
+    ]),
+    actions ? h('div.page-head-actions', actions) : null
+  ]);
 }
 
 /**
@@ -400,7 +492,7 @@ export function groupByDay(slots) {
 export function timetableView(slots) {
   const groups = groupByDay(slots);
   if (groups.length === 0) {
-    return emptyState('No timetable has been published yet.', '▤');
+    return emptyState('No timetable has been published yet.', 'calendar');
   }
   return h('div', groups.map(([day, daySlots]) => h('section.day-group', [
     h('header', [
