@@ -91,10 +91,15 @@ await waitFor('document.readyState === "complete"', 'the page');
 await waitFor('document.querySelector(".home-title") !== null', 'the home page');
 await new Promise((resolve) => setTimeout(resolve, 800));
 
-// The picture can be of the home page or of the sign in dialog over it.
+// The picture can be of the home page, of the sign in dialog or of the sign up dialog.
 if (process.argv[4] === 'dialog') {
   await evaluate('document.querySelector(".home-nav-links a.button").click()');
   await waitFor('document.querySelector(".modal .auth-card") !== null', 'the sign in dialog');
+  await new Promise((resolve) => setTimeout(resolve, 600));
+}
+if (process.argv[4] === 'signup') {
+  await evaluate('document.querySelector(".home-actions a.button").click()');
+  await waitFor('document.querySelector(".modal .auth-card") !== null', 'the sign up dialog');
   await new Promise((resolve) => setTimeout(resolve, 600));
 }
 

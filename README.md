@@ -204,10 +204,10 @@ There is no picture on it. The type, the space and the grey do the work.
 
 ### The sign in
 
-**Sign In** and **Get Started** open over the page as a dialog, so nobody is taken away
-from what they were reading. The dialog holds the sign in and the sign up, and the two
-swap places inside it. Signing out, from the profile or from the account menu, brings
-the person back to the home page.
+**Sign In** and **Get Started** open over the page as a small dialog that holds only the
+form, so nobody is taken away from what they were reading. The dialog holds the sign in
+and the sign up, and the two swap places inside it. Signing out, from the profile or from
+the account menu, brings the person back to the home page.
 
 ---
 

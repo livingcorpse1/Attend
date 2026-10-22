@@ -6,7 +6,7 @@
  * from the server, never from a stale copy.
  */
 
-const CACHE_NAME = 'veriqra-shell-v5';
+const CACHE_NAME = 'veriqra-shell-v6';
 
 const SHELL_ASSETS = [
   '/',

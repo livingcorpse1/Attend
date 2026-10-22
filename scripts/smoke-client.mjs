@@ -274,7 +274,9 @@ async function run() {
   await navigate(`${baseUrl}/#/login`);
   await waitFor('document.querySelector(".auth-card") !== null', 'the sign in screen');
   check('the sign in screen renders', await evaluate('document.querySelector(".auth-card h1").textContent'));
-  check('the marketing panel renders', await evaluate('document.querySelector(".auth-aside") !== null'));
+  check('the sign in opens as a dialog over the home page',
+    await evaluate('document.querySelector(".modal") !== null '
+      + '&& document.querySelector(".home-title") !== null'));
 
   // The home page.
   await navigate(`${baseUrl}/`);

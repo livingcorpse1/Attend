@@ -8,47 +8,6 @@ import { openModal, toast } from '../ui.js';
 import { icon } from '../icons.js';
 import { consentVersion, demoAccounts, demoMode } from '../store.js';
 
-const SELLING_POINTS = [
-  {
-    glyph: 'refresh',
-    title: 'Rotating codes',
-    text: 'Every classroom code is signed and expires within seconds, so a screenshot cannot be reused.'
-  },
-  {
-    glyph: 'scan-face',
-    title: 'Verified presence',
-    text: 'The face check runs on the server. Nobody can mark attendance for somebody else.'
-  },
-  {
-    glyph: 'smartphone',
-    title: 'Works on any phone',
-    text: 'Install it like an app. It keeps working on a weak connection and comes back online on its own.'
-  }
-];
-
-/**
- * Renders the marketing panel of the authentication screens.
- */
-export function authAside() {
-  return h('aside.auth-aside', [
-    h('div.brand', [
-        h('img.brand-mark', { src: '/icons/logo.png', alt: '', width: '30', height: '30' }),
-        h('span', 'VeriQra', h('small', 'Presence, verified'))
-      ]),
-      h('div.stack.stack-3', [
-      h('h2', 'Attendance you can actually trust.'),
-      h('p', 'VeriQra pairs a rotating classroom code with a face check that runs on the server, so every attendance record is backed by evidence.')
-    ]),
-    h('div.auth-points', SELLING_POINTS.map((point) => h('div.auth-point', [
-      h('span.glyph', icon(point.glyph, { size: 16 })),
-      h('div', [
-        h('div.point-title', point.title),
-        h('p.text-sm', { style: { color: '#b5b5b5' } }, point.text)
-      ])
-    ])))
-  ]);
-}
-
 /**
  * The card of the sign in form.
  *
@@ -126,10 +85,9 @@ function loginCard({ onSignedIn, onSwitch }) {
 /**
  * Opens the sign in or the sign up as a dialog over the page.
  *
- * <p>The person never leaves the page they were reading. The dialog carries the same
- * split as the sign in screen: the black panel that explains the product on the left and
- * the form on the right. The two forms swap places inside the dialog, so the page behind
- * it stays as it was.
+ * <p>The dialog holds nothing but the form, so it stays small and the page behind it
+ * stays visible. The two forms swap places inside it, and closing it leaves the page
+ * exactly as it was.
  *
  * @param {'login'|'signup'} mode
  * @returns {Promise<object|undefined>} The account of the person who signed in, or nothing
@@ -139,20 +97,16 @@ export async function openAuthDialog(mode = 'login') {
   let outcome;
   do {
     outcome = await openModal({
-      wide: true,
       title: mode === 'signup' ? 'Create your account' : 'Sign in',
-      body: (ctx) => h('div.auth.auth-in-dialog', [
-        authAside(),
-        h('main.auth-main', mode === 'signup'
-          ? signupCard({
-            onRegistered: (account) => ctx.close(account),
-            onSwitch: () => ctx.close('login')
-          })
-          : loginCard({
-            onSignedIn: (account) => ctx.close(account),
-            onSwitch: () => ctx.close('signup')
-          }))
-      ])
+      body: (ctx) => h('div.auth-in-dialog', mode === 'signup'
+        ? signupCard({
+          onRegistered: (account) => ctx.close(account),
+          onSwitch: () => ctx.close('login')
+        })
+        : loginCard({
+          onSignedIn: (account) => ctx.close(account),
+          onSwitch: () => ctx.close('signup')
+        }))
     });
     if (outcome === 'signup') {
       mode = 'signup';

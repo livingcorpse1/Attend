@@ -815,15 +815,6 @@ table.data th.numeric {
   flex: none;
 }
 
-/* A dialog that holds two panels, like the sign in screen. */
-.modal-wide {
-  width: min(940px, 100%);
-}
-
-.modal-wide .modal-body {
-  padding: 0;
-}
-
 .modal-header h3 {
   font-size: var(--text-md);
   font-weight: var(--weight-semibold);

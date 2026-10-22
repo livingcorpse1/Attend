@@ -262,14 +262,13 @@ decorated that does not carry meaning.
 
 ### Sign in and sign up
 
-The sign in and the sign up open **over** the page as a dialog, so a reader of the home
-page never loses the place they are in. The dialog carries the split of the old sign in
-screen: the left half is black with a faint grid and a soft light, and it explains what
-the product does. The right half is the form. The two forms swap places inside the
-dialog, and closing it leaves the page exactly as it was.
+The sign in and the sign up open **over** the page as a small dialog that holds nothing
+but the form, so the page behind it stays visible and the reader never loses the place
+they are in. The two forms swap places inside the dialog, and closing it leaves the page
+exactly as it was.
 
-The dialog is wide, the left half keeps only the promise of the product, and under
-1080px the left half goes away and the form takes the whole width.
+A black marketing panel used to sit beside the form. It is gone: the home page behind
+the dialog already makes the promise, and a dialog that repeats it only gets in the way.
 
 The password field has a reveal button.
 

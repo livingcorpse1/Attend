@@ -361,110 +361,7 @@
   min-width: 0;
 }
 
-/* Auth pages ------------------------------------------------------------- */
-.auth {
-  min-height: 100vh;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  background: var(--background);
-}
-
-.auth-aside {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  gap: var(--space-8);
-  padding: var(--space-10);
-  background: #0d0d0d;
-  color: #f5f5f5;
-  overflow: hidden;
-}
-
-/* A faint grid and a soft light, the way a product page frames its promise. */
-.auth-aside::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background-image: linear-gradient(rgba(245, 245, 245, 0.045) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(245, 245, 245, 0.045) 1px, transparent 1px);
-  background-size: 48px 48px;
-  mask-image: radial-gradient(ellipse 80% 60% at 40% 35%, #000 20%, transparent 75%);
-  pointer-events: none;
-}
-
-.auth-aside::after {
-  content: "";
-  position: absolute;
-  width: 620px;
-  height: 620px;
-  right: -240px;
-  bottom: -260px;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(245, 245, 245, 0.09), transparent 68%);
-  pointer-events: none;
-}
-
-.auth-aside .brand {
-  color: #f5f5f5;
-  padding: 0;
-  position: relative;
-  z-index: 1;
-}
-
-.auth-aside .brand-mark {
-  background: #ffffff;
-  color: #000000;
-}
-
-.auth-aside h2 {
-  font-size: var(--text-2xl);
-  font-weight: var(--weight-semibold);
-  letter-spacing: -0.03em;
-  color: #ffffff;
-  max-width: 18ch;
-  position: relative;
-  z-index: 1;
-}
-
-.auth-aside p {
-  color: #b5b5b5;
-  max-width: 46ch;
-  position: relative;
-  z-index: 1;
-}
-
-.auth-points {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-5);
-  position: relative;
-  z-index: 1;
-}
-
-.auth-point {
-  display: flex;
-  gap: var(--space-3);
-  align-items: flex-start;
-}
-
-.auth-point .glyph {
-  display: grid;
-  place-items: center;
-  width: 32px;
-  height: 32px;
-  flex: none;
-  border-radius: var(--radius-sm);
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.09);
-  color: #f5f5f5;
-}
-
-.auth-point .point-title {
-  font-weight: var(--weight-medium);
-  color: #f5f5f5;
-}
-
+/* The authentication card ------------------------------------------------- */
 .auth-main {
   display: flex;
   align-items: center;
@@ -512,34 +409,18 @@
   text-align: center;
 }
 
-/* The sign in and the sign up open over the page, in a dialog that carries the same
-   split as the screen: the black panel on the left, the form on the right. */
+/* The sign in and the sign up open over the page, in a dialog that holds only the form. */
 .auth-in-dialog {
-  min-height: 0;
-  background: var(--background);
-}
-
-.auth-in-dialog .auth-aside {
-  padding: var(--space-7) var(--space-6);
-  justify-content: flex-start;
-  gap: var(--space-6);
-}
-
-.auth-in-dialog .auth-aside h2 {
-  font-size: var(--text-xl);
-}
-
-/* The dialog is short, so the panel keeps the promise and not the list of points. */
-.auth-in-dialog .auth-points {
-  display: none;
-}
-
-.auth-in-dialog .auth-main {
-  padding: var(--space-8) var(--space-6);
+  background: transparent;
 }
 
 .auth-in-dialog .auth-card {
-  width: min(360px, 100%);
+  width: 100%;
+}
+
+/* The bar of the dialog already carries the name, so the card does not repeat it. */
+.auth-in-dialog .auth-card .brand {
+  display: none;
 }
 
 .demo-note {
@@ -727,34 +608,6 @@
   .split-wide,
   .split {
     grid-template-columns: minmax(0, 1fr);
-  }
-
-  .auth {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  /* The panel becomes a banner above the form rather than disappearing. */
-  .auth-aside {
-    flex-direction: row;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--space-6);
-    padding: var(--space-6);
-    flex-wrap: wrap;
-  }
-
-  .auth-aside h2 {
-    font-size: var(--text-lg);
-    max-width: 26ch;
-  }
-
-  .auth-points {
-    display: none;
-  }
-
-  /* In a dialog the panel would take the room the form needs, so it goes away. */
-  .auth-in-dialog .auth-aside {
-    display: none;
   }
 }
 

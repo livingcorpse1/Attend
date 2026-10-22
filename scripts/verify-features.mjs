@@ -247,6 +247,27 @@ async function run() {
   check('the dialog closes without signing in',
     await evaluate('document.querySelector(".modal") === null'));
 
+  // The form of the dialog itself has to sign in.
+  const throughDialog = await evaluate(`(async () => {
+    document.querySelector('.home-nav-links a.button').click();
+    await new Promise((r) => setTimeout(r, 600));
+    const form = document.querySelector('.modal form');
+    form.querySelector('input[name="email"]').value = 'student@veriqra.local';
+    form.querySelector('input[name="password"]').value = ${JSON.stringify(DEMO_PASSWORD)};
+    form.requestSubmit();
+    const started = Date.now();
+    while (Date.now() - started < 15000 && !document.querySelector('.shell')) {
+      await new Promise((r) => setTimeout(r, 250));
+    }
+    return {
+      hash: location.hash,
+      shell: document.querySelector('.shell') !== null,
+      modal: document.querySelector('.modal') !== null
+    };
+  })()`);
+  check('the sign in from the dialog opens the workspace',
+    throughDialog.shell && !throughDialog.modal, JSON.stringify(throughDialog));
+
   await signIn('student@veriqra.local', DEMO_PASSWORD);
   await navigate(`${baseUrl}/`);
   await waitFor('document.querySelector(".shell") !== null', 'the student shell');
@@ -256,12 +277,15 @@ async function run() {
   await evaluate('location.hash = "#/profile"');
   await waitFor('location.hash === "#/profile" && document.querySelector("#view .card") !== null',
     'the profile of the student');
-  await waitFor('[...document.querySelectorAll("#view button")]'
-    + '.some((b) => b.textContent.trim() === "Sign out")', 'the sign out button');
+  await waitFor('[...document.querySelectorAll("#view h3")].some((h) => h.textContent.trim() === "Session")',
+    'the session card of the profile');
   const signedOut = await evaluate(`(async () => {
     const button = [...document.querySelectorAll('#view button')].find((b) => b.textContent.trim() === 'Sign out');
     button.click();
-    await new Promise((r) => setTimeout(r, 1500));
+    const started = Date.now();
+    while (Date.now() - started < 10000 && !document.querySelector('.home-title')) {
+      await new Promise((r) => setTimeout(r, 250));
+    }
     return {
       hash: location.hash,
       home: document.querySelector('.home-title') !== null,
