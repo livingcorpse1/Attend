@@ -572,6 +572,35 @@ async function run() {
       ended.error || `the server still has ${ended.openSessions} open session(s), the code is on the screen: ${ended.qrOnScreen}`);
   }
 
+  /* ------------------------------------------------------------- the stale session */
+
+  // The token of the browser is made stale, the way it happens when the server was
+  // restarted while the page was open. The request has to recover by itself.
+  const stale = await evaluate(`(async () => {
+    document.cookie = 'XSRF-TOKEN=00000000-0000-0000-0000-000000000000; path=/';
+    const { request } = await import('/js/api.js');
+    try {
+      await request('/faculty/timetable', { method: 'POST', body: { classId: 0, dayOfWeek: 1, starts: '07:00', ends: '08:00' } });
+      return { status: 200 };
+    } catch (failure) {
+      return { status: failure.status, code: failure.code, message: failure.message };
+    }
+  })()`);
+  check('a request with a stale token is tried again',
+    stale.code && stale.code !== 'HTTP_403', JSON.stringify(stale));
+
+  const recovery = await evaluate(`(async () => {
+    const { request } = await import('/js/api.js');
+    try {
+      await request('/faculty/timetable', { method: 'POST', body: { classId: 0, dayOfWeek: 1, starts: '07:00', ends: '08:00' } });
+      return { recovered: false };
+    } catch (failure) {
+      return { recovered: failure.code === 'SESSION_ENDED' || failure.status === 403, code: failure.code };
+    }
+  })()`);
+  check('a request that the framework refuses is reported clearly',
+    recovery.recovered === true, JSON.stringify(recovery));
+
   /* ---------------------------------------------------------------------- the institution */
 
   const institution = await evaluate(`(async () => {

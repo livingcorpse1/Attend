@@ -77,6 +77,16 @@ class AttendanceFlowIntegrationTest {
     }
 
     @Test
+    void aLectureThatHasAttendanceSessionsIsNotRemoved() throws Exception {
+        // The lecture of the setup has a session, so it stays: it is a record of what
+        // happened and not a row of the diary any more.
+        startSession();
+        mvc.perform(delete("/api/faculty/timetable/" + slotId).with(csrf()).session(facultySession))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("SLOT_HAS_SESSIONS"));
+    }
+
+    @Test
     void aStudentCanReadTheirOwnScreensBeforeTheIdentityCheck() throws Exception {
         // The screens a student only reads stay open, so the check is not a dead end.
         mvc.perform(get("/api/student/dashboard").session(studentSession))

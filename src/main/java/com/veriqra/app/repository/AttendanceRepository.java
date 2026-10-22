@@ -228,6 +228,12 @@ public class AttendanceRepository {
                 SESSION_MAPPER, classId);
     }
 
+    /** Every session that was taken for one lecture of the teaching diary. */
+    public List<SessionRow> sessionsForSlot(long slotId) {
+        return db.query("select * from attendance_session where timetable_slot_id = ? order by started_at desc",
+                SESSION_MAPPER, slotId);
+    }
+
     /** How many attendance records were written in a class section. */
     public int recordsForClass(long classId) {
         return db.queryForObject("""

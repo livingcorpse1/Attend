@@ -30,11 +30,14 @@ public class TimetableService {
     private final AcademicRepository academic;
     private final AuditRepository audit;
     private final AppProperties properties;
+    private final com.veriqra.app.repository.AttendanceRepository attendance;
 
-    public TimetableService(AcademicRepository academic, AuditRepository audit, AppProperties properties) {
+    public TimetableService(AcademicRepository academic, AuditRepository audit, AppProperties properties,
+                             com.veriqra.app.repository.AttendanceRepository attendance) {
         this.academic = academic;
         this.audit = audit;
         this.properties = properties;
+        this.attendance = attendance;
     }
 
     /** The first hour of the teaching day. */
@@ -199,6 +202,13 @@ public class TimetableService {
     @Transactional
     public void delete(long facultyId, long slotId) {
         TimetableView slot = requireSlot(facultyId, slotId);
+        // A lecture that was used for an attendance session is a record of what
+        // happened and is not removed with a click.
+        if (!attendance.sessionsForSlot(slotId).isEmpty()) {
+            throw ApiException.conflict("SLOT_HAS_SESSIONS",
+                    "This lecture has attendance sessions. Those are a record of what happened "
+                            + "and are not removed with the lecture.");
+        }
         academic.deleteTimetableSlot(slotId);
         audit.record(facultyId, "TIMETABLE_SLOT_DELETED", "slot=" + slotId, "TEACHER_ACTION",
                 "Lecture removed from the teaching diary", slot.subjectCode(), null);

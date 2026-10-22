@@ -109,6 +109,23 @@ async function boot() {
 
   startRouter();
   registerServiceWorker();
+  watchForALostSession();
+}
+
+/**
+ * Sends the person to the sign in screen when the session is gone.
+ *
+ * <p>The server forgets a session when it is restarted without the sessions in the
+ * database, or when it was signed out in another tab. The request that noticed it says
+ * so, and the page follows.
+ */
+function watchForALostSession() {
+  addEventListener('veriqra:session-lost', () => {
+    setState({ account: null });
+    replaceChildren(root);
+    navigate('/login', { replace: true });
+    toast('Your session has ended. Please sign in again.', 'error');
+  });
 }
 
 /**

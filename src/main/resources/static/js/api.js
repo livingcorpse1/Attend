@@ -96,13 +96,65 @@ export async function request(path, options = {}) {
 
   if (!response.ok) {
     const code = payload && payload.code ? payload.code : `HTTP_${response.status}`;
-    const message = payload && payload.message
+    const unsafe = method !== 'GET' && method !== 'HEAD';
+
+    if (!payload || !payload.code) {
+      // The framework refused the request and said nothing about it. That is what a
+      // stale token looks like: the token in the browser no longer belongs to the
+      // session. The session is read again, which gives a fresh token, and the
+      // request is tried once more.
+      if (unsafe) {
+        const recovered = await recoverFromAStaleSession();
+        if (recovered) {
+          return request(path, options);
+        }
+        throw new ApiError('SESSION_ENDED',
+          'Your session has ended. Please sign in again.', response.status);
+      }
+      throw new ApiError(code,
+        `The request failed with status ${response.status}.`, response.status);
+    }
+
+    const message = payload.message
       ? payload.message
       : `The request failed with status ${response.status}.`;
     throw new ApiError(code, message, response.status);
   }
 
   return payload;
+}
+
+/**
+ * Reads the session again after the framework refused a request.
+ *
+ * <p>Reading the session gives the browser a fresh token, so a request that failed
+ * because of an old one can be tried again. When there is no session any more, the
+ * page is told, and the person is sent to the sign in screen.
+ *
+ * @returns {Promise<boolean>} True when the request is worth trying again.
+ */
+async function recoverFromAStaleSession() {
+  let bootstrap = null;
+  try {
+    const response = await fetch('/api/auth/session', {
+      headers: { Accept: 'application/json' },
+      credentials: 'same-origin'
+    });
+    if (response.ok) {
+      bootstrap = await response.json();
+    }
+  } catch (error) {
+    bootstrap = null;
+  }
+
+  if (bootstrap && bootstrap.account) {
+    // The session is still there, so it was the token. The fresh one is in the cookie
+    // now, and the request can be tried again.
+    return true;
+  }
+
+  dispatchEvent(new CustomEvent('veriqra:session-lost'));
+  return false;
 }
 
 /** Convenience wrappers. */
