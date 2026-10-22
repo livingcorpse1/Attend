@@ -320,16 +320,16 @@ export function viewSkeleton() {
  */
 export function statTile({ label, value, foot, tone, meter }) {
   const toneClass = tone ? ` is-${tone}` : '';
+  // Every tile carries the same parts, and the row of the meter always has the same
+  // height, so the note of every tile in a row stands on the same line.
   const children = [
     h('div.stat-label', label),
-    h(`div.stat-value${toneClass}`, value)
+    h(`div.stat-value${toneClass}`, value),
+    h('div.stat-meter', meter !== undefined && meter !== null
+      ? h(`div.meter${meter < 75 ? '.is-low' : ''}`, h('span', { style: { width: `${Math.min(100, Math.max(0, meter))}%` } }))
+      : null),
+    h('div.stat-foot', foot || '')
   ];
-  if (meter !== undefined && meter !== null) {
-    children.push(h(`div.meter${meter < 75 ? '.is-low' : ''}`, h('span', { style: { width: `${Math.min(100, Math.max(0, meter))}%` } })));
-  }
-  if (foot) {
-    children.push(h('div.stat-foot', foot));
-  }
   return h('div.stat', children);
 }
 

@@ -213,6 +213,23 @@ async function run() {
     }
     return results;
   })()`);
+
+  // Every screen of the student is opened and has to render.
+  const studentScreens = [
+    { path: '/dashboard', marker: '.stat-value' },
+    { path: '/attendance', marker: '#view .card' },
+    { path: '/timetable', marker: '#view .card' },
+    { path: '/profile', marker: '#view .card' }
+  ];
+  for (const screen of studentScreens) {
+    await evaluate(`location.hash = "#${screen.path}"`);
+    const rendered = await waitFor(
+      `document.querySelector("${screen.marker}") !== null && location.hash === "#${screen.path}"`,
+      `the screen ${screen.path}`,
+      12000
+    ).then(() => true).catch(() => false);
+    check(`the screen ${screen.path} of the student renders`, rendered);
+  }
   for (const entry of menu) {
     if (entry.path === '/verify-presence') {
       // The screen that marks the attendance is closed until the identity check is
@@ -308,9 +325,28 @@ async function run() {
   await signIn('faculty@veriqra.local', DEMO_PASSWORD);
   await navigate(`${baseUrl}/`);
   await waitFor('document.querySelector(".shell") !== null', 'the teacher shell');
+
+  // Every screen of the teacher is opened and has to render.
+  const teacherScreens = [
+    { path: '/dashboard', marker: '.stat-value' },
+    { path: '/attendance', marker: '#view .card' },
+    { path: '/classes', marker: '#view .card' },
+    { path: '/timetable', marker: '.scheduler-cell' },
+    { path: '/reports', marker: '#view .card' },
+    { path: '/profile', marker: '#view .card' }
+  ];
+  for (const screen of teacherScreens) {
+    await evaluate(`location.hash = "#${screen.path}"`);
+    const rendered = await waitFor(
+      `document.querySelector("${screen.marker}") !== null && location.hash === "#${screen.path}"`,
+      `the screen ${screen.path}`,
+      12000
+    ).then(() => true).catch(() => false);
+    check(`the screen ${screen.path} of the teacher renders`, rendered);
+  }
+
   await evaluate('location.hash = "#/timetable"');
   await waitFor('document.querySelector(".scheduler-cell") !== null', 'the timetable');
-
   const geometry = await evaluate(`(() => {
     const hours = [...document.querySelectorAll('.scheduler-hour')].map((node) => ({
       label: node.textContent.trim(), top: Math.round(node.getBoundingClientRect().top)
@@ -318,17 +354,47 @@ async function run() {
     const slots = [...document.querySelectorAll('.scheduler-slot')].map((node) => ({
       text: node.textContent.trim(), top: Math.round(node.getBoundingClientRect().top)
     }));
-    const feet = [...document.querySelectorAll('.stat-foot')].map((node) =>
-      Math.round(node.getBoundingClientRect().top));
-    return { hours, slots, feet };
+    return { hours, slots };
   })()`);
   const slotAligned = geometry.slots.every((slot) =>
     geometry.hours.some((hour) => Math.abs(hour.top - slot.top) < 3));
   check('every lecture in the week grid sits on the line of its hour', slotAligned,
     JSON.stringify(geometry.slots.map((s) => s.top)));
-  const feetAligned = new Set(geometry.feet).size <= 1;
-  check('the notes of the tiles in a row stand on the same line', feetAligned,
-    `the notes are at ${geometry.feet.join(', ')}`);
+
+  // The notes of the tiles of the dashboard have to stand on the same line, even when
+  // one of the tiles carries a meter. Only the tiles that stand in the same row count.
+  await evaluate('location.hash = "#/dashboard"');
+  await waitFor('document.querySelector(".stat-value") !== null', 'the dashboard');
+  const rows = await evaluate(`(() => {
+    const tiles = [...document.querySelectorAll('.stat')].map((node) => {
+      const box = node.getBoundingClientRect();
+      const foot = node.querySelector('.stat-foot');
+      const meter = node.querySelector('.meter');
+      return {
+        top: Math.round(box.top),
+        height: Math.round(box.height),
+        foot: foot ? Math.round(foot.getBoundingClientRect().top) : null,
+        meter: meter ? Math.round(meter.getBoundingClientRect().top) : null,
+        margin: foot ? getComputedStyle(foot).marginTop : null,
+        display: getComputedStyle(node).display,
+        rows: getComputedStyle(node).gridTemplateRows,
+        align: getComputedStyle(node).alignContent,
+        children: node.children.length
+      };
+    });
+    const groups = new Map();
+    for (const tile of tiles) {
+      if (!groups.has(tile.top)) { groups.set(tile.top, []); }
+      groups.get(tile.top).push(tile);
+    }
+    return [...groups.values()];
+  })()`);
+  const rowsAligned = rows.every((tilesInRow) => new Set(tilesInRow.map((t) => t.foot)).size === 1);
+  check('the notes of the tiles in a row stand on the same line', rowsAligned,
+    JSON.stringify(rows));
+
+  await evaluate('location.hash = "#/timetable"');
+  await waitFor('document.querySelector(".scheduler-cell") !== null', 'the timetable');
 
   // A lecture that is added has to show up without a reload.
   const added = await evaluate(`(async () => {
@@ -399,6 +465,34 @@ async function run() {
   check('the classes screen does not offer the removed actions',
     !classes.includes('Enrol a student') && !classes.includes('Add a colleague')
     && !classes.includes('Add a class section'));
+
+  /* ------------------------------------------------------------------- the live session */
+
+  await evaluate('location.hash = "#/attendance"');
+  await waitFor('document.querySelector("#view .card") !== null', 'the attendance screen');
+  const session = await evaluate(`(async () => {
+    const buttons = [...document.querySelectorAll('.lecture-row button')];
+    const button = buttons.find((b) => !b.disabled);
+    if (!button) {
+      return { skipped: 'no lecture of the day is running' };
+    }
+    const label = button.textContent.trim();
+    button.click();
+    await new Promise((r) => setTimeout(r, 4000));
+    return {
+      label,
+      buttons: buttons.length,
+      started: document.querySelector('.qr-stage canvas') !== null,
+      stage: document.querySelector('.qr-stage') !== null,
+      text: document.body.innerText.slice(0, 200)
+    };
+  })()`);
+  if (session.skipped) {
+    console.log(`      the live session was not measured: ${session.skipped}`);
+  } else {
+    check('a session of a running lecture projects the rotating code', session.started,
+      `${session.label} · stage ${session.stage} · ${session.text.replace(/\n/g, ' ').slice(0, 80)}`);
+  }
 
   /* ---------------------------------------------------------------------- the institution */
 
