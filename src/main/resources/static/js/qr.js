@@ -6,7 +6,7 @@
  */
 
 import { h } from './dom.js';
-import { cameraUnavailableMessage } from './camera.js';
+import { cameraUnavailableMessage, playVideo, wasInterrupted } from './camera.js';
 
 /**
  * Waits until the scanner library is available.
@@ -51,6 +51,8 @@ export function scannerPanel() {
   let stream = null;
   let frameHandle = null;
   let running = false;
+  let starting = false;
+  let startToken = 0;
 
   async function scan() {
     const context = canvas.getContext('2d', { willReadFrequently: true });
@@ -79,31 +81,66 @@ export function scannerPanel() {
   }
 
   async function start() {
-    if (running) {
+    if (running || starting) {
       return;
     }
-    await waitForLibrary('jsQR');
-    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-      throw new Error(cameraUnavailableMessage());
-    }
-    stream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: { ideal: 'environment' } },
-      audio: false
-    });
-    running = true;
-    video.srcObject = stream;
-    video.setAttribute('playsinline', '');
-    video.muted = true;
-    await video.play();
-    caption.textContent = 'Scanning for the classroom code';
-    status.textContent = 'Hold the code inside the frame.';
+    // The camera takes a moment to open. The button is put to sleep for that time, so
+    // a second tap cannot start a second camera on top of the first one.
+    starting = true;
+    const token = ++startToken;
     startButton.disabled = true;
-    stopButton.disabled = false;
-    scan();
+    try {
+      await waitForLibrary('jsQR');
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        throw new Error(cameraUnavailableMessage());
+      }
+      const opened = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: { ideal: 'environment' } },
+        audio: false
+      });
+      if (token !== startToken) {
+        // The camera was stopped while it was opening.
+        for (const track of opened.getTracks()) {
+          track.stop();
+        }
+        return;
+      }
+      stream = opened;
+      running = true;
+      video.srcObject = stream;
+      video.setAttribute('playsinline', '');
+      video.muted = true;
+      await playVideo(video);
+      caption.textContent = 'Scanning for the classroom code';
+      status.textContent = 'Hold the code inside the frame.';
+      stopButton.disabled = false;
+      scan();
+    } catch (failure) {
+      // The camera is not running, so the tracks are released and the button is free
+      // again. A start that was interrupted is not a failure of the camera.
+      if (stream) {
+        for (const track of stream.getTracks()) {
+          track.stop();
+        }
+        stream = null;
+      }
+      video.srcObject = null;
+      running = false;
+      startButton.disabled = false;
+      if (!wasInterrupted(failure)) {
+        throw failure;
+      }
+    } finally {
+      starting = false;
+    }
   }
 
   function stop() {
     running = false;
+    starting = false;
+    // A start that is still on its way is cancelled, so the camera does not open after
+    // the person walked away from it.
+    startToken += 1;
     if (frameHandle) {
       window.cancelAnimationFrame(frameHandle);
       frameHandle = null;

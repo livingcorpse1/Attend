@@ -82,6 +82,62 @@ export function cameraUnavailableMessage() {
 }
 
 /**
+ * True when the browser refused a play because the element was loaded again.
+ *
+ * <p>The message is "the play request was interrupted by a new load request". Nothing is
+ * wrong with the camera: the picture arrives a moment later, when the new load has
+ * finished.
+ *
+ * @param {Error} error
+ * @returns {boolean}
+ */
+export function wasInterrupted(error) {
+  const message = String(error && error.message ? error.message : '').toLowerCase();
+  return Boolean(error)
+    && (error.name === 'AbortError'
+      || message.includes('interrupted by a new load request')
+      || message.includes('load request'));
+}
+
+/**
+ * Plays the video and waits until it shows a picture.
+ *
+ * <p>A play that is interrupted is not a failure. The video is given a moment to
+ * produce its first frame, and only a camera that stays silent is an error.
+ *
+ * @param {HTMLVideoElement} video
+ * @param {number} [timeoutMillis] How long the camera may take.
+ */
+export async function playVideo(video, timeoutMillis = 10000) {
+  try {
+    await video.play();
+  } catch (error) {
+    if (!wasInterrupted(error)) {
+      throw error;
+    }
+  }
+  if (video.videoWidth > 0) {
+    return;
+  }
+  await new Promise((resolve, reject) => {
+    const finish = () => {
+      clearTimeout(timer);
+      video.removeEventListener('loadeddata', ready);
+      video.removeEventListener('playing', ready);
+      resolve();
+    };
+    const ready = () => finish();
+    const timer = setTimeout(() => {
+      video.removeEventListener('loadeddata', ready);
+      video.removeEventListener('playing', ready);
+      reject(new Error('The camera did not start. Please try again.'));
+    }, timeoutMillis);
+    video.addEventListener('loadeddata', ready);
+    video.addEventListener('playing', ready);
+  });
+}
+
+/**
  * Opens the camera.
  *
  * @param {HTMLVideoElement} video
@@ -118,7 +174,7 @@ export async function openCamera(video, options = {}) {
   video.srcObject = stream;
   video.setAttribute('playsinline', '');
   video.muted = true;
-  await video.play();
+  await playVideo(video);
   await waitForMetadata(video);
   return new CameraSession(video, stream);
 }

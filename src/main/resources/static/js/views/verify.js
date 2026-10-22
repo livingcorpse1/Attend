@@ -33,7 +33,9 @@ export async function runLivenessCapture({ panel, challenge, submit, onFinished 
   replaceChildren(panel, frame, status, h('div.row.gap-2.wrap', [button, stopButton]), strip, feedback);
 
   let session = null;
+  let cancelled = false;
   const cleanup = () => {
+    cancelled = true;
     if (session) {
       session.stop();
       session = null;
@@ -50,6 +52,12 @@ export async function runLivenessCapture({ panel, challenge, submit, onFinished 
 
   try {
     session = await openCamera(video);
+    if (cancelled) {
+      // The person walked away while the camera was opening, so it is released again.
+      session.stop();
+      session = null;
+      return undefined;
+    }
     caption.textContent = 'Centre your face in the frame';
     reticle.classList.add('is-locked');
     status.textContent = challenge.guidance;

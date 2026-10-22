@@ -368,7 +368,9 @@ async function run() {
     return { hours, slots };
   })()`);
   const slotAligned = geometry.slots.every((slot) =>
-    geometry.hours.some((hour) => Math.abs(hour.top - slot.top) < 3));
+    geometry.hours.some((hour) => Math.abs(hour.top - slot.top) < 3
+      // A lecture that starts half past the hour sits half a row lower.
+      || Math.abs(hour.top + 29 - slot.top) < 3));
   check('every lecture in the week grid sits on the line of its hour', slotAligned,
     JSON.stringify(geometry.slots.map((s) => s.top)));
 
@@ -497,15 +499,17 @@ async function run() {
     const before = read();
     const arrow = [...document.querySelectorAll('.card-header .icon-button')].pop();
     arrow.click();
-    await new Promise((r) => setTimeout(r, 500));
+    await new Promise((r) => setTimeout(r, 400));
+    arrow.click();
+    await new Promise((r) => setTimeout(r, 400));
     const after = read();
     return { before, after };
   })()`);
   check('the lectures of the calendar follow the dates',
     calendar.before.label !== calendar.after.label
-      && JSON.stringify(calendar.before.chips.map((c) => c.date))
-        !== JSON.stringify(calendar.after.chips.map((c) => c.date)),
-    `the dates of the lectures went from ${JSON.stringify(calendar.before.chips.map((c) => c.date))} to ${JSON.stringify(calendar.after.chips.map((c) => c.date))}`);
+      && calendar.before.chips.length > 0
+      && calendar.after.chips.length === 0,
+    `the range went from "${calendar.before.label}" to "${calendar.after.label}" and the lectures from ${JSON.stringify(calendar.before.chips.map((c) => c.date))} to ${JSON.stringify(calendar.after.chips.map((c) => c.date))}`);
 
   /* ------------------------------------------------------------------- the live session */
   await evaluate('location.hash = "#/attendance"');
